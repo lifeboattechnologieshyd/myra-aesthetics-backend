@@ -32,7 +32,7 @@ services:
     restart: unless-stopped
 
     env_file:
-      - ../../.env.production
+      - ../../.env.docker
 
     ports:
       - "8016:8000"
