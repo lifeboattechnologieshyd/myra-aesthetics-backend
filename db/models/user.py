@@ -2,48 +2,68 @@
 import uuid
 
 from django.contrib.auth.base_user import BaseUserManager, AbstractBaseUser
+from django.contrib.auth.models import PermissionsMixin
 from django.db import models
-
-from db.models import AuditModel
 
 
 class CustomUserManager(BaseUserManager):
-    def create_user(self, mobile, password=None, **extra_fields):
-        if not mobile:
-            raise ValueError("The Mobile Number must be set")
-        user = self.model(mobile=mobile, **extra_fields)
+
+    def create_user(self, username, password=None, **extra_fields):
+        if not username:
+            raise ValueError("The username must be set")
+
+        user = self.model(username=username, **extra_fields)
+
         if password:
             user.set_password(password)
         else:
             user.set_unusable_password()
+
         user.save(using=self._db)
         return user
 
+    def create_superuser(self, username, password=None, **extra_fields):
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+        extra_fields.setdefault("is_active", True)
 
-class UserMaster(AbstractBaseUser):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    username = models.CharField(max_length=30)
-    mobile = models.CharField(max_length=20, null=True, unique=True, blank=True)
-    email = models.EmailField(max_length=100, unique=True, null=True)
-    image = models.CharField(max_length=255, null=True)
-    is_active = models.BooleanField(default=True)
-    referral_code = models.CharField(
-        max_length=20,
-        unique=True,
-        null=True,
-        blank=True
+        if extra_fields.get("is_staff") is not True:
+            raise ValueError("Superuser must have is_staff=True")
+
+        if extra_fields.get("is_superuser") is not True:
+            raise ValueError("Superuser must have is_superuser=True")
+
+        return self.create_user(username, password, **extra_fields)
+
+
+class UserMaster(AbstractBaseUser, PermissionsMixin):
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False
     )
-    points = models.IntegerField(default=0)
-    updated_by = models.CharField(max_length=255,null=True)
+
+    username = models.CharField(
+        max_length=150,
+        unique=True
+    )
+
+    is_active = models.BooleanField(default=True)
+
+    is_staff = models.BooleanField(default=False)
+
     created_at = models.DateTimeField(auto_now_add=True)
+
     updated_at = models.DateTimeField(auto_now=True)
-    bio = models.TextField(blank=True,null=True)
+
     objects = CustomUserManager()
-    USERNAME_FIELD = "email"
+
+    USERNAME_FIELD = "username"
     REQUIRED_FIELDS = []
 
-    def __str__(self):
-        return str(self.email)
-
     class Meta:
-        db_table = "user-master"
+        db_table = "user_master"
+
+    def __str__(self):
+        return self.username
