@@ -1,0 +1,57 @@
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: myra-postgres
+    restart: unless-stopped
+
+    env_file:
+      - ../../.env.docker
+
+    volumes:
+      - myra_pg_data:/var/lib/postgresql/data
+
+    networks:
+      - myra-network
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+    stop_grace_period: 60s
+
+  backend:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+
+    container_name: myra-backend
+    restart: unless-stopped
+
+    env_file:
+      - ../../.env.production
+
+    ports:
+      - "8016:8000"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    networks:
+      - myra-network
+
+    init: true
+    stop_grace_period: 40s
+
+networks:
+  myra-network:
+    name: myra-network
+    driver: bridge
+
+volumes:
+  myra_pg_data:
+    name: myra_pg_data
