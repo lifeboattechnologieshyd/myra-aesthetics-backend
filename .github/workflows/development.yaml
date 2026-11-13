@@ -28,7 +28,7 @@ jobs:
 
           set -e
 
-          cd /home/ubuntu/myra_aesthetics_backend
+          cd /home/ubuntu/myra-aesthetics-backend
 
           git fetch origin development
           git checkout development
