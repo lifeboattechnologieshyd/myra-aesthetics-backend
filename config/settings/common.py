@@ -12,6 +12,10 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+from datetime import timedelta
+
+load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -37,6 +41,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    'rest_framework',
+    'db.apps.DbConfig',
+    'backoffice',
+    'rest_framework_simplejwt.token_blacklist',
 ]
 
 MIDDLEWARE = [
@@ -72,15 +81,14 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-
+print(os.environ.get("POSTGRES_PASSWORD"))
 #############################
 #        DATABASES          #
 #############################
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": (os.environ.get("POSTGRES_NAME")
-                 or os.environ.get("POSTGRES_DB")),
+        "NAME": (os.environ.get("POSTGRES_NAME")),
         "USER": os.environ.get("POSTGRES_USER"),
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD"),
         "HOST": os.environ.get("POSTGRES_HOST"),
@@ -95,6 +103,10 @@ DATABASES = {
         ),
     }
 }
+
+
+
+
 
 
 # Password validation
@@ -141,4 +153,22 @@ MAILERS = {
     'default': {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
+}
+
+#user model inherited by our database
+AUTH_USER_MODEL = 'db.UserMaster'
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+}
+
+# =========================================================
+# JWT TOKEN CONFIGURATION
+# =========================================================
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
+    "CHECK_REVOKE_TOKEN": True,
 }
