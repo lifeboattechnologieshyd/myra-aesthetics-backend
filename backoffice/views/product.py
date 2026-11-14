@@ -2,12 +2,12 @@ from decimal import Decimal, InvalidOperation
 
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator, EmptyPage
-from django.db.models import Q
 
 from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from rest_framework import status
+
+#Import custom responses
+from utils.custom_response import CustomResponse
 
 from db.models import Product
 
@@ -22,32 +22,28 @@ class ProductListCreateAPIView(APIView):
 
         for field in required_fields:
             if field not in request.data:
-                return Response(
-                    {"message": f"{field} is required"},
-                    status=status.HTTP_400_BAD_REQUEST
+                return CustomResponse.error(
+                    message=f"{field} is required"
                 )
 
         product_name = request.data.get("product_name")
 
         if not isinstance(product_name, str) or not product_name.strip():
-            return Response(
-                {"message": "Product name cannot be empty"},
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message="Product name cannot be empty"
             )
 
         description = request.data.get("description")
         is_active = request.data.get("is_active", True)
 
         if description is not None and not isinstance(description, str):
-            return Response(
-                {"message": "Description must be a string or null"},
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message="Description must be a string or null"
             )
 
         if not isinstance(is_active, bool):
-            return Response(
-                {"message": "is_active must be true or false"},
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message= "is_active must be true or false"
             )
 
         try:
@@ -56,21 +52,18 @@ class ProductListCreateAPIView(APIView):
             price = Decimal(str(request.data.get("price")))
 
         except (ValueError, TypeError, InvalidOperation):
-            return Response(
-                {"message": "Invalid quantity or price"},
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message= "Invalid quantity or price"
             )
 
         if quantity < 0 or mrp < 0 or price < 0:
-            return Response(
-                {"message": "Quantity and prices cannot be negative"},
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message= "Quantity and prices cannot be negative"
             )
 
         if mrp < price:
-            return Response(
-                {"message": "Selling price cannot exceed MRP"},
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message= "Selling price cannot exceed MRP"
             )
 
         product = Product(
@@ -87,19 +80,15 @@ class ProductListCreateAPIView(APIView):
         try:
             product.full_clean()
         except ValidationError as error:
-            return Response(
-                {"message": error.message_dict},
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message="Product validation failed.",
             )
 
         product.save()
 
-        return Response(
-            {
-                "message": "Product created successfully",
-                "product": self.product_data(product)
-            },
-            status=status.HTTP_201_CREATED
+        return CustomResponse.success(
+            message="Product created successfully.",
+            data=self.product_data(product)
         )
 
     # COMMON PRODUCT RESPONSE
@@ -137,9 +126,8 @@ class ProductListCreateAPIView(APIView):
         if is_active is not None:
 
             if is_active.lower() not in ["true", "false"]:
-                return Response(
-                    {"message": "is_active must be true or false"},
-                    status=status.HTTP_400_BAD_REQUEST
+                return CustomResponse.error(
+                    message="is_active must be true or false"
                 )
 
             products = products.filter(
@@ -162,9 +150,8 @@ class ProductListCreateAPIView(APIView):
                 and max_price is not None
                 and min_price > max_price
             ):
-                return Response(
-                    {"message": "min_price cannot exceed max_price"},
-                    status=status.HTTP_400_BAD_REQUEST
+                return CustomResponse.error(
+                    message="min_price cannot exceed max_price"
                 )
 
             if min_price is not None:
@@ -174,9 +161,8 @@ class ProductListCreateAPIView(APIView):
                 products = products.filter(price__lte=max_price)
 
         except InvalidOperation:
-            return Response(
-                {"message": "Invalid price filter"},
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message="Invalid price filter"
             )
 
         # QUANTITY FILTER
@@ -195,9 +181,8 @@ class ProductListCreateAPIView(APIView):
                 )
 
             except ValueError:
-                return Response(
-                    {"message": "Invalid min_quantity"},
-                    status=status.HTTP_400_BAD_REQUEST
+                return CustomResponse.error(
+                    message= "Invalid min_quantity"
                 )
 
         # PAGINATION
@@ -209,9 +194,8 @@ class ProductListCreateAPIView(APIView):
                 raise ValueError
 
         except (ValueError, TypeError):
-            return Response(
-                {"message": "Invalid page or size. Size must be between 1 and 100"},
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message= "Invalid page or size. Size must be between 1 and 100"
             )
 
         paginator = Paginator(products, size)
@@ -220,9 +204,8 @@ class ProductListCreateAPIView(APIView):
             page_obj = paginator.page(page)
 
         except EmptyPage:
-            return Response(
-                {"message": "Requested page does not exist"},
-                status=status.HTTP_404_NOT_FOUND
+            return CustomResponse.error(
+                message= "Requested page does not exist"
             )
 
         results = [
@@ -230,15 +213,15 @@ class ProductListCreateAPIView(APIView):
             for product in page_obj.object_list
         ]
 
-        return Response(
-            {
+        return CustomResponse.success(
+            message="Products retrieved successfully.",
+            data={
                 "count": paginator.count,
                 "total_pages": paginator.num_pages,
                 "current_page": page,
                 "page_size": size,
                 "results": results
-            },
-            status=status.HTTP_200_OK
+            }
         )
 
 
@@ -253,14 +236,13 @@ class ProductDetailAPIView(APIView):
             product = Product.objects.get(id=product_id)
 
         except Product.DoesNotExist:
-            return Response(
-                {"message": "Product not found"},
-                status=status.HTTP_404_NOT_FOUND
+            return CustomResponse.error(
+                message= "Product not found"
             )
 
-        return Response(
-            ProductListCreateAPIView.product_data(product),
-            status=status.HTTP_200_OK
+        return CustomResponse.success(
+            message="Product retrieved successfully.",
+            data=ProductListCreateAPIView.product_data(product)
         )
 
     # COMMON UPDATE METHOD
@@ -276,15 +258,13 @@ class ProductDetailAPIView(APIView):
         }
 
         if not request.data:
-            return Response(
-                {"message": "No update data provided"},
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message="No update data provided"
             )
 
         if set(request.data.keys()) - allowed_fields:
-            return Response(
-                {"message": "Invalid fields provided"},
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message="Invalid fields provided"
             )
 
         if not partial:
@@ -299,18 +279,16 @@ class ProductDetailAPIView(APIView):
             missing_fields = required_fields - set(request.data.keys())
 
             if missing_fields:
-                return Response(
-                    {"message": f"Missing fields: {list(missing_fields)}"},
-                    status=status.HTTP_400_BAD_REQUEST
+                return CustomResponse.error(
+                    message=f"Missing fields: {list(missing_fields)}"
                 )
 
         for field, value in request.data.items():
 
             if field == "product_name":
                 if not isinstance(value, str) or not value.strip():
-                    return Response(
-                        {"message": "Product name cannot be empty"},
-                        status=status.HTTP_400_BAD_REQUEST
+                    return CustomResponse.error(
+                        message="Product name cannot be empty"
                     )
 
                 value = value.strip()
@@ -321,9 +299,8 @@ class ProductDetailAPIView(APIView):
                     if value < 0:
                         raise ValueError
                 except (ValueError, TypeError):
-                    return Response(
-                        {"message": "Invalid quantity"},
-                        status=status.HTTP_400_BAD_REQUEST
+                    return CustomResponse.error(
+                        message= "Invalid quantity"
                     )
 
             elif field in ["mrp", "price"]:
@@ -332,31 +309,27 @@ class ProductDetailAPIView(APIView):
                     if value < 0:
                         raise ValueError
                 except (ValueError, TypeError, InvalidOperation):
-                    return Response(
-                        {"message": f"Invalid {field}"},
-                        status=status.HTTP_400_BAD_REQUEST
+                    return CustomResponse.error(
+                        message=f"Invalid {field}"
                     )
 
             elif field == "is_active":
                 if not isinstance(value, bool):
-                    return Response(
-                        {"message": "is_active must be true or false"},
-                        status=status.HTTP_400_BAD_REQUEST
+                    return CustomResponse.error(
+                        message="is_active must be true or false"
                     )
 
             elif field == "description":
                 if value is not None and not isinstance(value, str):
-                    return Response(
-                        {"message": "Description must be a string or null"},
-                        status=status.HTTP_400_BAD_REQUEST
+                    return CustomResponse.error(
+                        message="Description must be a string or null"
                     )
 
             setattr(product, field, value)
 
         if product.mrp < product.price:
-            return Response(
-                {"message": "Selling price cannot exceed MRP"},
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message="Selling price cannot exceed MRP"
             )
 
         product.updated_by = request.user.username
@@ -364,19 +337,15 @@ class ProductDetailAPIView(APIView):
         try:
             product.full_clean()
         except ValidationError as error:
-            return Response(
-                {"message": error.message_dict},
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message="Product validation failed.",
             )
 
         product.save()
 
-        return Response(
-            {
-                "message": "Product updated successfully",
-                "product": ProductListCreateAPIView.product_data(product)
-            },
-            status=status.HTTP_200_OK
+        return CustomResponse.success(
+            message="Product updated successfully.",
+            data=ProductListCreateAPIView.product_data(product)
         )
 
     # UPDATE ALL FIELDS
@@ -386,9 +355,8 @@ class ProductDetailAPIView(APIView):
             product = Product.objects.get(id=product_id)
 
         except Product.DoesNotExist:
-            return Response(
-                {"message": "Product not found"},
-                status=status.HTTP_404_NOT_FOUND
+            return CustomResponse.error(
+                message="Product not found"
             )
 
         return self.update_product(request, product, partial=False)
@@ -400,9 +368,8 @@ class ProductDetailAPIView(APIView):
             product = Product.objects.get(id=product_id)
 
         except Product.DoesNotExist:
-            return Response(
-                {"message": "Product not found"},
-                status=status.HTTP_404_NOT_FOUND
+            return CustomResponse.error(
+                message="Product not found"
             )
 
         return self.update_product(request, product, partial=True)
@@ -414,16 +381,14 @@ class ProductDetailAPIView(APIView):
         product = Product.objects.filter(id=product_id).first()
 
         if not product:
-            return Response(
-                {"message": "Product not found"},
-                status=status.HTTP_404_NOT_FOUND
+            return CustomResponse.error(
+                message="Product not found"
             )
 
         # Check whether the product is already inactive
         if not product.is_active:
-            return Response(
-                {"message": "Product is already inactive"},
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message= "Product is already inactive"
             )
 
         # Mark product as inactive instead of permanently deleting it
@@ -431,7 +396,6 @@ class ProductDetailAPIView(APIView):
         product.updated_by = request.user.username
         product.save()
 
-        return Response(
-            {"message": "Product deactivated successfully"},
-            status=status.HTTP_200_OK
+        return CustomResponse.success(
+            message="Product deactivated successfully."
         )

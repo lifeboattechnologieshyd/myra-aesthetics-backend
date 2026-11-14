@@ -4,10 +4,11 @@ from django.db.models import Q
 
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework import status
+
 
 from db.models import Patient
+#Import custom responses
+from utils.custom_response import CustomResponse
 
 
 # Fields accepted from the API
@@ -158,25 +159,20 @@ class PatientListCreateAPIView(APIView):
             errors = model_validation_errors(patient)
 
             if errors:
-                return Response(
-                    {"errors": errors},
-                    status=status.HTTP_400_BAD_REQUEST
+                return CustomResponse.error(
+                    message="Patient validation failed."
                 )
 
             patient.save()
 
-            return Response(
-                {
-                    "message": "Patient created successfully.",
-                    "patient": patient_data(patient)
-                },
-                status=status.HTTP_201_CREATED
+            return CustomResponse.success(
+                message="Patient created successfully.",
+                data=patient_data(patient)
             )
 
         except ValueError as error:
-            return Response(
-                {"message": str(error)},
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message=str(error)
             )
 
     # RETRIEVE ALL PATIENTS
@@ -205,9 +201,8 @@ class PatientListCreateAPIView(APIView):
             valid_genders = Patient.Gender.values
 
             if gender not in valid_genders:
-                return Response(
-                    {"message": "Invalid gender filter."},
-                    status=status.HTTP_400_BAD_REQUEST
+                return CustomResponse.error(
+                    message="Invalid gender."
                 )
 
             queryset = queryset.filter(gender=gender)
@@ -218,9 +213,8 @@ class PatientListCreateAPIView(APIView):
         if is_active is not None:
 
             if is_active.lower() not in ["true", "false"]:
-                return Response(
-                    {"message": "is_active must be true or false."},
-                    status=status.HTTP_400_BAD_REQUEST
+                return CustomResponse.error(
+                    message= "is_active must be true or false."
                 )
 
             queryset = queryset.filter(
@@ -241,15 +235,12 @@ class PatientListCreateAPIView(APIView):
                 )
 
         except (ValueError, TypeError):
-            return Response(
-                {
-                    "message": (
-                        "Invalid pagination values. "
-                        "Page must be a positive integer and "
-                        "size must be between 1 and 100."
-                    )
-                },
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message=(
+                    "Invalid pagination values. "
+                    "Page must be a positive integer and "
+                    "size must be between 1 and 100."
+                )
             )
 
         paginator = Paginator(queryset, size)
@@ -258,9 +249,8 @@ class PatientListCreateAPIView(APIView):
             page_obj = paginator.page(page)
 
         except EmptyPage:
-            return Response(
-                {"message": "Requested page does not exist."},
-                status=status.HTTP_404_NOT_FOUND
+            return CustomResponse.error(
+                message= "Requested page does not exist."
             )
 
         results = [
@@ -268,17 +258,16 @@ class PatientListCreateAPIView(APIView):
             for patient in page_obj
         ]
 
-        return Response(
-            {
+        return CustomResponse.success(
+            message="Patients retrieved successfully.",
+            data={
                 "count": paginator.count,
                 "total_pages": paginator.num_pages,
                 "current_page": page,
                 "page_size": size,
                 "results": results
-            },
-            status=status.HTTP_200_OK
+            }
         )
-
 
 class PatientDetailAPIView(APIView):
 
@@ -298,16 +287,13 @@ class PatientDetailAPIView(APIView):
         patient = self.get_patient(patient_id)
 
         if patient is None:
-            return Response(
-                {"message": "Patient not found."},
-                status=status.HTTP_404_NOT_FOUND
+            return CustomResponse.error(
+                message="Patient not found."
             )
 
-        return Response(
-            {
-                "patient": patient_data(patient)
-            },
-            status=status.HTTP_200_OK
+        return CustomResponse.success(
+            message="Patient retrieved successfully.",
+            data=patient_data(patient)
         )
 
     # UPDATE COMPLETE PATIENT PROFILE
@@ -316,9 +302,8 @@ class PatientDetailAPIView(APIView):
         patient = self.get_patient(patient_id)
 
         if patient is None:
-            return Response(
-                {"message": "Patient not found."},
-                status=status.HTTP_404_NOT_FOUND
+            return CustomResponse.error(
+                message="Patient not found."
             )
 
         try:
@@ -332,25 +317,20 @@ class PatientDetailAPIView(APIView):
             errors = model_validation_errors(patient)
 
             if errors:
-                return Response(
-                    {"errors": errors},
-                    status=status.HTTP_400_BAD_REQUEST
+                return CustomResponse.error(
+                    message="Patient validation failed."
                 )
 
             patient.save()
 
-            return Response(
-                {
-                    "message": "Patient updated successfully.",
-                    "patient": patient_data(patient)
-                },
-                status=status.HTTP_200_OK
+            return CustomResponse.success(
+                message="Patient updated successfully.",
+                data=patient_data(patient)
             )
 
         except ValueError as error:
-            return Response(
-                {"message": str(error)},
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message=str(error)
             )
 
     # PARTIALLY UPDATE PATIENT PROFILE
@@ -359,15 +339,13 @@ class PatientDetailAPIView(APIView):
         patient = self.get_patient(patient_id)
 
         if patient is None:
-            return Response(
-                {"message": "Patient not found."},
-                status=status.HTTP_404_NOT_FOUND
+            return CustomResponse.error(
+                message="Patient not found."
             )
 
         if not request.data:
-            return Response(
-                {"message": "At least one field is required."},
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message= "At least one field is required."
             )
 
         try:
@@ -384,25 +362,20 @@ class PatientDetailAPIView(APIView):
             errors = model_validation_errors(patient)
 
             if errors:
-                return Response(
-                    {"errors": errors},
-                    status=status.HTTP_400_BAD_REQUEST
+                return CustomResponse.error(
+                    message="Patient validation failed."
                 )
 
             patient.save()
 
-            return Response(
-                {
-                    "message": "Patient updated successfully.",
-                    "patient": patient_data(patient)
-                },
-                status=status.HTTP_200_OK
+            return CustomResponse.success(
+                message="Patient updated successfully.",
+                data=patient_data(patient)
             )
 
         except ValueError as error:
-            return Response(
-                {"message": str(error)},
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message= str(error)
             )
 
     # SOFT DELETE PATIENT
@@ -412,16 +385,14 @@ class PatientDetailAPIView(APIView):
         patient = Patient.objects.filter(id=patient_id).first()
 
         if not patient:
-            return Response(
-                {"message": "Patient not found"},
-                status=status.HTTP_404_NOT_FOUND
+            return CustomResponse.error(
+                message="Patient not found."
             )
 
         # Check whether the patient is already inactive
         if not patient.is_active:
-            return Response(
-                {"message": "Patient profile is already inactive"},
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message= "Patient profile is already inactive"
             )
 
         # Mark patient as inactive instead of permanently deleting the profile
@@ -429,7 +400,6 @@ class PatientDetailAPIView(APIView):
         patient.updated_by = request.user.username
         patient.save()
 
-        return Response(
-            {"message": "Patient profile deactivated successfully"},
-            status=status.HTTP_200_OK
+        return CustomResponse.success(
+            message= "Patient profile deactivated successfully"
         )

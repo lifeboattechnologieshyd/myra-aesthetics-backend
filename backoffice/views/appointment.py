@@ -13,15 +13,17 @@ from django.utils.dateparse import parse_datetime
 # Django model validation exception.
 from django.core.exceptions import ValidationError as DjangoValidationError
 
-# DRF classes for APIs, authentication and responses.
+# DRF classes for APIs and authentication.
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework import status
+
 
 # Import database models.
 from db.models.appointment import Appointment
 from db.models.patient import Patient
+
+# Import custom responses.
+from utils.custom_response import CustomResponse
 
 
 # =========================================================
@@ -34,27 +36,13 @@ def appointment_data(appointment):
 
     return {
         "id": str(appointment.id),
-
-        # Patient details linked to this appointment.
-        "patient": {
-            "id": str(appointment.patient.id),
-            "full_name": appointment.patient.full_name,
-            "mobile": appointment.patient.mobile
-        },
-
-        # Appointment date and time.
+        "patient_id": str(appointment.patient.id),
+        "patient_name": appointment.patient.full_name,
         "appointment_datetime": appointment.appointment_datetime.isoformat(),
-
-        # Consultation or treatment notes.
-        # This will be null if no notes have been added.
         "notes": appointment.notes,
-
-        # Current appointment status.
         "status": appointment.status,
-
-        # Audit information.
-        "created_at": appointment.created_at,
-        "updated_at": appointment.updated_at,
+        "created_at": appointment.created_at.isoformat(),
+        "updated_at": appointment.updated_at.isoformat(),
         "created_by": appointment.created_by,
         "updated_by": appointment.updated_by
     }
@@ -239,9 +227,8 @@ class AppointmentListCreateAPIView(APIView):
         )
 
         if errors:
-            return Response(
-                errors,
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message="Validation failed."
             )
 
         # Retrieve the patient ID from the request.
@@ -260,9 +247,8 @@ class AppointmentListCreateAPIView(APIView):
             TypeError,
             DjangoValidationError
         ):
-            return Response(
-                {"error": "Active patient not found."},
-                status=status.HTTP_404_NOT_FOUND
+            return CustomResponse.error(
+                message="Active patient not found."
             )
 
         # Create the appointment.
@@ -281,20 +267,16 @@ class AppointmentListCreateAPIView(APIView):
             appointment.full_clean()
 
         except DjangoValidationError as e:
-            return Response(
-                {"error": e.message_dict},
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message="Appointment validation failed."
             )
 
         # Save the appointment in the database.
         appointment.save()
 
-        return Response(
-            {
-                "message": "Appointment created successfully.",
-                "data": appointment_data(appointment)
-            },
-            status=status.HTTP_201_CREATED
+        return CustomResponse.success(
+            message="Appointment created successfully.",
+            data=appointment_data(appointment)
         )
 
     # -----------------------------------------------------
@@ -310,9 +292,7 @@ class AppointmentListCreateAPIView(APIView):
 
         current_datetime = timezone.now()
 
-        # -------------------------------------------------
         # FILTER 1: UPCOMING OR PREVIOUS APPOINTMENTS
-        # -------------------------------------------------
 
         appointment_type = request.query_params.get("type")
 
@@ -336,13 +316,8 @@ class AppointmentListCreateAPIView(APIView):
                 )
 
             else:
-                return Response(
-                    {
-                        "error": (
-                            "Invalid type. Use 'upcoming' or 'previous'."
-                        )
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
+                return CustomResponse.error(
+                    message="Invalid type. Use 'upcoming' or 'previous'."
                 )
 
         # -------------------------------------------------
@@ -356,9 +331,8 @@ class AppointmentListCreateAPIView(APIView):
             appointment_status = appointment_status.upper()
 
             if appointment_status not in Appointment.Status.values:
-                return Response(
-                    {"error": "Invalid appointment status."},
-                    status=status.HTTP_400_BAD_REQUEST
+                return CustomResponse.error(
+                    message="Invalid appointment status."
                 )
 
             appointments = appointments.filter(
@@ -397,9 +371,8 @@ class AppointmentListCreateAPIView(APIView):
                 raise ValueError
 
         except (ValueError, TypeError):
-            return Response(
-                {"error": "Page and size must be positive integers."},
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message="Page and size must be positive integers."
             )
 
         # Divide the filtered appointments into pages.
@@ -409,9 +382,8 @@ class AppointmentListCreateAPIView(APIView):
             page_obj = paginator.page(page)
 
         except EmptyPage:
-            return Response(
-                {"error": "Requested page does not exist."},
-                status=status.HTTP_404_NOT_FOUND
+            return CustomResponse.error(
+                message="Requested page does not exist."
             )
 
         # Convert appointments into response dictionaries.
@@ -420,9 +392,9 @@ class AppointmentListCreateAPIView(APIView):
             for appointment in page_obj
         ]
 
-        return Response(
-            {
-                "message": "Appointments retrieved successfully.",
+        return CustomResponse.success(
+            message="Appointments retrieved successfully.",
+            data={
                 "pagination": {
                     "total_records": paginator.count,
                     "total_pages": paginator.num_pages,
@@ -431,9 +403,8 @@ class AppointmentListCreateAPIView(APIView):
                     "has_next": page_obj.has_next(),
                     "has_previous": page_obj.has_previous()
                 },
-                "data": appointment_list
-            },
-            status=status.HTTP_200_OK
+                "results": appointment_list
+            }
         )
 
 
@@ -477,17 +448,13 @@ class AppointmentDetailAPIView(APIView):
         appointment = self.get_appointment(appointment_id)
 
         if appointment is None:
-            return Response(
-                {"error": "Appointment not found."},
-                status=status.HTTP_404_NOT_FOUND
+            return CustomResponse.error(
+                message="Appointment not found."
             )
 
-        return Response(
-            {
-                "message": "Appointment retrieved successfully.",
-                "data": appointment_data(appointment)
-            },
-            status=status.HTTP_200_OK
+        return CustomResponse.success(
+            message="Appointment retrieved successfully.",
+            data=appointment_data(appointment)
         )
 
     # -----------------------------------------------------
@@ -524,9 +491,8 @@ class AppointmentDetailAPIView(APIView):
         appointment = self.get_appointment(appointment_id)
 
         if appointment is None:
-            return Response(
-                {"error": "Appointment not found."},
-                status=status.HTTP_404_NOT_FOUND
+            return CustomResponse.error(
+                message="Appointment not found."
             )
 
         # Validate the update request.
@@ -537,9 +503,8 @@ class AppointmentDetailAPIView(APIView):
         )
 
         if errors:
-            return Response(
-                errors,
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message="Validation failed."
             )
 
         # Determine the status after applying this update.
@@ -555,14 +520,11 @@ class AppointmentDetailAPIView(APIView):
             "notes" in validated_data
             and resulting_status != Appointment.Status.COMPLETED
         ):
-            return Response(
-                {
-                    "error": (
-                        "Consultation or treatment notes can only be "
-                        "added or updated after the appointment is completed."
-                    )
-                },
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message=(
+                    "Consultation or treatment notes can only be "
+                    "added or updated after the appointment is completed."
+                )
             )
 
         # Apply the validated fields to the appointment.
@@ -578,20 +540,16 @@ class AppointmentDetailAPIView(APIView):
             appointment.full_clean()
 
         except DjangoValidationError as e:
-            return Response(
-                {"error": e.message_dict},
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message="Appointment validation failed.",
             )
 
         # Save changes in the database.
         appointment.save()
 
-        return Response(
-            {
-                "message": "Appointment updated successfully.",
-                "data": appointment_data(appointment)
-            },
-            status=status.HTTP_200_OK
+        return CustomResponse.success(
+            message="Appointment updated successfully.",
+            data=appointment_data(appointment)
         )
 
 
@@ -615,9 +573,8 @@ class PatientNextAppointmentAPIView(APIView):
             patient = Patient.objects.get(id=patient_id)
 
         except (Patient.DoesNotExist, ValueError, TypeError):
-            return Response(
-                {"error": "Patient not found."},
-                status=status.HTTP_404_NOT_FOUND
+            return CustomResponse.error(
+                message="Patient not found."
             )
 
         # Find the nearest future scheduled appointment.
@@ -633,18 +590,12 @@ class PatientNextAppointmentAPIView(APIView):
 
         # Return null when no upcoming appointment exists.
         if next_appointment is None:
-            return Response(
-                {
-                    "message": "No upcoming scheduled appointment found.",
-                    "data": None
-                },
-                status=status.HTTP_200_OK
+            return CustomResponse.success(
+                message="No upcoming scheduled appointment found.",
+                data=None
             )
 
-        return Response(
-            {
-                "message": "Next appointment retrieved successfully.",
-                "data": appointment_data(next_appointment)
-            },
-            status=status.HTTP_200_OK
+        return CustomResponse.success(
+            message="Next appointment retrieved successfully.",
+            data=appointment_data(next_appointment)
         )

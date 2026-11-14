@@ -1,20 +1,15 @@
 
 from django.contrib.auth import authenticate
-from django.contrib.auth.password_validation import validate_password
-from django.core.exceptions import ValidationError
 
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.response import Response
-from rest_framework import status
+from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.token_blacklist.models import (
-    OutstandingToken,
-    BlacklistedToken
-)
 
 from db.models import UserMaster, PasswordResetRequest
+#Import custom responses
+from utils.custom_response import CustomResponse
 
 
 # LOGIN
@@ -30,9 +25,8 @@ class LoginAPIView(APIView):
 
         # Validate required fields
         if not username or not password:
-            return Response(
-                {"message": "Username and password are required"},
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message="Username and password are required"
             )
 
         # Authenticate user credentials
@@ -44,9 +38,8 @@ class LoginAPIView(APIView):
 
         # Check whether credentials are valid
         if user is None:
-            return Response(
-                {"message": "Invalid username or password"},
-                status=status.HTTP_401_UNAUTHORIZED
+            return CustomResponse.error(
+                message="Invalid username or password"
             )
 
         # Generate refresh token
@@ -56,15 +49,14 @@ class LoginAPIView(APIView):
         access = refresh.access_token
 
         # Return login details and both tokens
-        return Response(
-            {
-                "message": "Login successful",
+        return CustomResponse.success(
+            message="Login successful",
+            data={
                 "user_id": str(user.id),
                 "username": user.username,
                 "access": str(access),
                 "refresh": str(refresh)
-            },
-            status=status.HTTP_200_OK
+            }
         )
 
 
@@ -77,65 +69,44 @@ class CreateUserAPIView(APIView):
 
         # Only superuser can create staff users
         if not request.user.is_superuser:
-            return Response(
-                {"message": "Only superuser can create users"},
-                status=status.HTTP_403_FORBIDDEN
+            return CustomResponse.error(
+                message="Only superuser can create users"
             )
 
         username = request.data.get("username")
         password = request.data.get("password")
-        confirm_password = request.data.get("confirm_password")
 
         # Validate required fields
-        if not username or not password or not confirm_password:
-            return Response(
-                {
-                    "message": "Username, password and confirm_password are required"
-                },
-                status=status.HTTP_400_BAD_REQUEST
+        if not username or not password:
+            return CustomResponse.error(
+                message="Username and password are required"
             )
-
         username = username.strip()
+        if not username:
+            return CustomResponse.error(
+                message="Username cannot be empty"
+            )
 
         # Check whether username already exists
         if UserMaster.objects.filter(username=username).exists():
-            return Response(
-                {"message": "Username already exists"},
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message="Username already exists"
             )
-
-        # Check password confirmation
-        if password != confirm_password:
-            return Response(
-                {"message": "Passwords do not match"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Validate password strength
-        try:
-            validate_password(password)
-        except ValidationError as error:
-            return Response(
-                {"message": error.messages},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
         # Create staff user
         user = UserMaster.objects.create_user(
             username=username,
             password=password,
             is_active=True,
-            is_staff=False,
+            is_staff=True,
             is_superuser=False
         )
 
-        return Response(
-            {
-                "message": "User created successfully",
+        return CustomResponse.success(
+            message="User created successfully",
+            data={
                 "user_id": str(user.id),
                 "username": user.username
-            },
-            status=status.HTTP_201_CREATED
+            }
         )
 
 
@@ -150,9 +121,8 @@ class ForgotPasswordAPIView(APIView):
 
         # Validate username
         if not username:
-            return Response(
-                {"message": "Username is required"},
-                status=status.HTTP_400_BAD_REQUEST
+            return CustomResponse.error(
+                message="Username is required"
             )
 
         username = username.strip()
@@ -169,11 +139,8 @@ class ForgotPasswordAPIView(APIView):
             username=username
         )
 
-        return Response(
-            {
-                "message": "Please contact the administrator to reset your password."
-            },
-            status=status.HTTP_200_OK
+        return CustomResponse.success(
+            message="Please contact the administrator to reset your password."
         )
 
 
@@ -186,32 +153,21 @@ class ResetUserPasswordAPIView(APIView):
 
         # Only superuser can reset staff passwords
         if not request.user.is_superuser:
-            return Response(
-                {"message": "Only superuser can reset passwords"},
-                status=status.HTTP_403_FORBIDDEN
+            return CustomResponse.error(
+                message="Only superuser can reset passwords"
             )
 
         username = request.data.get("username")
         new_password = request.data.get("new_password")
-        confirm_password = request.data.get("confirm_password")
 
         # Validate required fields
-        if not username or not new_password or not confirm_password:
-            return Response(
-                {
-                    "message": "Username, new_password and confirm_password are required"
-                },
-                status=status.HTTP_400_BAD_REQUEST
+        if not username or not new_password :
+            return CustomResponse.error(
+                message="Username and new_password are required"
             )
 
         username = username.strip()
 
-        # Check password confirmation
-        if new_password != confirm_password:
-            return Response(
-                {"message": "Passwords do not match"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
 
         # Find staff user
         user = UserMaster.objects.filter(
@@ -220,19 +176,11 @@ class ResetUserPasswordAPIView(APIView):
         ).first()
 
         if not user:
-            return Response(
-                {"message": "Staff user not found"},
-                status=status.HTTP_404_NOT_FOUND
+            return CustomResponse.error(
+                message="Staff user not found"
             )
 
-        # Validate new password
-        try:
-            validate_password(new_password, user=user)
-        except ValidationError as error:
-            return Response(
-                {"message": error.messages},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+
 
         # Update password
         user.set_password(new_password)
@@ -244,7 +192,6 @@ class ResetUserPasswordAPIView(APIView):
         for token in outstanding_tokens:
             BlacklistedToken.objects.get_or_create(token=token)
 
-        return Response(
-            {"message": "User password reset successfully"},
-            status=status.HTTP_200_OK
+        return CustomResponse.success(
+            message="User password reset success"
         )
