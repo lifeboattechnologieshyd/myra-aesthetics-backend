@@ -7,10 +7,9 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 
 #Import custom responses
-
-from db.models import Product
 from shared.utils.custom_response import CustomResponse
 
+from db.models import Product
 
 class ProductListCreateAPIView(APIView):
 
