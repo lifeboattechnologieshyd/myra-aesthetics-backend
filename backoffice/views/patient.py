@@ -7,8 +7,9 @@ from rest_framework.permissions import IsAuthenticated
 
 
 from db.models import Patient
+from shared.utils.custom_response import CustomResponse
+
 #Import custom responses
-from utils.custom_response import CustomResponse
 
 
 # Fields accepted from the API

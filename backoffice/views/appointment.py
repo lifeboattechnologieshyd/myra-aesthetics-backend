@@ -21,9 +21,10 @@ from rest_framework.permissions import IsAuthenticated
 # Import database models.
 from db.models.appointment import Appointment
 from db.models.patient import Patient
+from shared.utils.custom_response import CustomResponse
+
 
 # Import custom responses.
-from utils.custom_response import CustomResponse
 
 
 # =========================================================

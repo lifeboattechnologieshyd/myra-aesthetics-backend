@@ -8,8 +8,10 @@ from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, Bl
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from db.models import UserMaster, PasswordResetRequest
+from shared.utils.custom_response import CustomResponse
+
+
 #Import custom responses
-from utils.custom_response import CustomResponse
 
 
 # LOGIN
