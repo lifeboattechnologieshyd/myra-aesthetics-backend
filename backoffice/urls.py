@@ -21,6 +21,30 @@ from backoffice.views.appointment import (
     PatientNextAppointmentAPIView
 )
 
+from backoffice.views.service import (
+    ServiceListCreateAPIView,
+    ServiceDetailAPIView
+)
+
+from backoffice.views.invoice import (
+    InvoiceListCreateAPIView,
+    InvoiceDetailAPIView
+)
+
+from backoffice.views.invoice_payment import (
+    InvoicePaymentAPIView
+)
+
+from backoffice.views.reports import (
+    DashboardReportAPIView,
+    PatientRegistrationReportAPIView,
+    PatientVisitReportAPIView,
+    AppointmentSummaryReportAPIView,
+    UpcomingAppointmentReportAPIView,
+    PatientVisitHistoryAPIView,
+    InvoiceReportAPIView,
+    BillingSummaryReportAPIView
+)
 urlpatterns = [
     #user urls
     path('login/', LoginAPIView.as_view()),
@@ -41,5 +65,20 @@ urlpatterns = [
     path("appointments/<uuid:appointment_id>/",AppointmentDetailAPIView.as_view()),
     path('patients/<uuid:patient_id>/next-appointment/',PatientNextAppointmentAPIView.as_view()),
 
+    path("services/",ServiceListCreateAPIView.as_view()),
+    path("services/<uuid:service_id>/",ServiceDetailAPIView.as_view()),
 
+    path("invoices/",InvoiceListCreateAPIView.as_view()),
+    path("invoices/<uuid:invoice_id>/",InvoiceDetailAPIView.as_view()),
+    path("invoices/<uuid:invoice_id>/payments/",InvoicePaymentAPIView.as_view()),
+
+    #report_urls
+    path("reports/dashboard/",DashboardReportAPIView.as_view()),
+    path("reports/patients/",PatientRegistrationReportAPIView.as_view()),
+    path("reports/visits/",PatientVisitReportAPIView.as_view()),
+    path("reports/appointments/summary/",AppointmentSummaryReportAPIView.as_view()),
+    path("reports/appointments/upcoming/",UpcomingAppointmentReportAPIView.as_view()),
+    path("reports/patients/<uuid:patient_id>/visits/",PatientVisitHistoryAPIView.as_view()),
+    path("reports/invoices/",InvoiceReportAPIView.as_view()),
+    path("reports/billing/",BillingSummaryReportAPIView.as_view()),
 ]
