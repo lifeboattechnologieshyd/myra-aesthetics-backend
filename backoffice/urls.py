@@ -54,6 +54,7 @@ from backoffice.views.patient_visit import (
 from backoffice.views.patient_history import PatientHistoryAPIView
 
 from backoffice.views.invoice_pdf import InvoicePDFAPIView
+from backoffice.views.patient_visit import PatientVisitPhotoAPIView
 
 urlpatterns = [
     #user urls
@@ -100,4 +101,6 @@ urlpatterns = [
     path("patients/<uuid:patient_id>/history/",PatientHistoryAPIView.as_view()),
 
     path("invoices/<uuid:invoice_id>/pdf/",InvoicePDFAPIView.as_view()),
+
+    path("patient-visits/<uuid:visit_id>/photos/",PatientVisitPhotoAPIView.as_view()),
 ]

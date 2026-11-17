@@ -7,11 +7,9 @@ from db.models.patient_visit import PatientVisit
 
 
 class PatientPhoto(AuditModel):
-
     class PhotoType(models.TextChoices):
         BEFORE = "BEFORE", "Before Treatment"
         AFTER = "AFTER", "After Treatment"
-        OTHER = "OTHER", "Other"
 
     patient = models.ForeignKey(
         Patient,
@@ -27,14 +25,15 @@ class PatientPhoto(AuditModel):
         null=True
     )
 
-    #image = models.ImageField(
-    #    upload_to="patient_photos/"
-    #)
+    image_path = models.CharField(
+        max_length=500,
+        blank=True,
+        null=True
+    )
 
     photo_type = models.CharField(
         max_length=10,
-        choices=PhotoType.choices,
-        default=PhotoType.OTHER
+        choices=PhotoType.choices
     )
 
     description = models.TextField(

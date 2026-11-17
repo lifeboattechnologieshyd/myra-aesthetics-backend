@@ -7,7 +7,12 @@ from django.utils.dateparse import parse_date, parse_datetime
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 
-from db.models import Patient, Appointment, PatientVisit
+from db.models import (
+    Patient,
+    Appointment,
+    PatientVisit,
+    PatientPhoto
+)
 from shared.utils.custom_response import CustomResponse
 
 
@@ -24,8 +29,30 @@ REQUIRED_FIELDS = {
 }
 
 
+
 def patient_visit_data(visit):
+
     appointment = visit.appointment
+
+    photos = visit.photos.all()
+
+    before_photos = []
+    after_photos = []
+
+    for photo in photos:
+
+        photo_data = {
+            "id": str(photo.id),
+            "image_path": photo.image_path,
+            "description": photo.description,
+            "created_at": photo.created_at.isoformat(),
+        }
+
+        if photo.photo_type == PatientPhoto.PhotoType.BEFORE:
+            before_photos.append(photo_data)
+
+        elif photo.photo_type == PatientPhoto.PhotoType.AFTER:
+            after_photos.append(photo_data)
 
     return {
         "id": str(visit.id),
@@ -41,11 +68,18 @@ def patient_visit_data(visit):
         "visit_date": visit.visit_date.isoformat(),
         "consultant_name": visit.consultant_name,
         "notes": visit.notes,
+
+        "photos": {
+            "before": before_photos,
+            "after": after_photos,
+        },
+
         "created_at": visit.created_at.isoformat(),
         "updated_at": visit.updated_at.isoformat(),
         "created_by": visit.created_by,
         "updated_by": visit.updated_by,
     }
+
 
 
 def validate_visit_data(data, partial=False):
@@ -423,3 +457,102 @@ class PatientVisitDetailAPIView(APIView):
             return CustomResponse.error(
                 message=str(error)
             )
+
+
+class PatientVisitPhotoAPIView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    # ADD PHOTO TO PATIENT VISIT
+    def post(self, request, visit_id, format=None):
+
+        # FIND PATIENT VISIT
+        try:
+            visit = PatientVisit.objects.select_related(
+                "patient"
+            ).filter(id=visit_id).first()
+
+        except (ValueError, DjangoValidationError):
+            return CustomResponse.error(
+                message="Invalid visit_id."
+            )
+
+        if visit is None:
+            return CustomResponse.error(
+                message="Patient visit not found."
+            )
+
+        # GET INPUT DATA
+        image_path = request.data.get("image_path")
+        photo_type = request.data.get("photo_type")
+        description = request.data.get("description")
+
+        # VALIDATE IMAGE PATH
+        if not isinstance(image_path, str) or not image_path.strip():
+            return CustomResponse.error(
+                message="image_path is required."
+            )
+
+        image_path = image_path.strip()
+
+        if len(image_path) > 500:
+            return CustomResponse.error(
+                message="image_path cannot exceed 500 characters."
+            )
+
+        # VALIDATE PHOTO TYPE
+        if not isinstance(photo_type, str):
+            return CustomResponse.error(
+                message="photo_type is required. Use BEFORE or AFTER."
+            )
+
+        photo_type = photo_type.strip().upper()
+
+        if photo_type not in PatientPhoto.PhotoType.values:
+            return CustomResponse.error(
+                message="Invalid photo_type. Use BEFORE or AFTER."
+            )
+
+        # VALIDATE DESCRIPTION
+        if description is not None and not isinstance(description, str):
+            return CustomResponse.error(
+                message="description must be a string."
+            )
+
+        if description is not None:
+            description = description.strip() or None
+
+        # CREATE PATIENT PHOTO
+        photo = PatientPhoto(
+            patient=visit.patient,
+            visit=visit,
+            image_path=image_path,
+            photo_type=photo_type,
+            description=description,
+            created_by=request.user.username,
+            updated_by=request.user.username
+        )
+
+        try:
+            photo.full_clean()
+            photo.save()
+
+        except DjangoValidationError as error:
+            return CustomResponse.error(
+                message="Patient photo validation failed.",
+                errors=error.message_dict
+            )
+
+        return CustomResponse.success(
+            message="Patient photo added successfully.",
+            data={
+                "photo_id": str(photo.id),
+                "patient_id": str(photo.patient_id),
+                "visit_id": str(photo.visit_id),
+                "photo_type": photo.photo_type,
+                "image_path": photo.image_path,
+                "description": photo.description,
+                "created_at": photo.created_at.isoformat()
+            }
+        )
+

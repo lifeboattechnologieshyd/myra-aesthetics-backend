@@ -140,7 +140,6 @@ class FileUploadView(APIView):
 
 
         if not files:
-
             return CustomResponse().success(
                 {"error": "No file was provided."},
             )
@@ -150,8 +149,6 @@ class FileUploadView(APIView):
         try:
 
             for file_obj in files:
-
-
 
                 sanitized_filename = add_unique_suffix_to_filename(
                     sanitize_filename(file_obj.name)

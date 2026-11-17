@@ -1,6 +1,9 @@
 
 from io import BytesIO
 from decimal import Decimal
+import logging
+
+from urllib.request import Request, urlopen
 
 from django.http import HttpResponse
 from django.utils import timezone
@@ -9,20 +12,30 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
+from reportlab.lib.utils import ImageReader
+
 from reportlab.platypus import (
     SimpleDocTemplate,
     Paragraph,
     Spacer,
     Table,
     TableStyle,
-    HRFlowable
+    HRFlowable,
+    Image
 )
 
 from db.models import Invoice
+
+
+import ssl
+import certifi
+from urllib.request import Request, urlopen
+
+logger = logging.getLogger(__name__)
 
 
 # =========================================================
@@ -40,6 +53,85 @@ CLINIC_ADDRESS = (
 CLINIC_PHONE = "91 81919 66999"
 
 CLINIC_EMAIL = "myraaaesthetics@gmail.com"
+
+CLINIC_LOGO_URL = "https://myra-development.s3.ap-south-1.amazonaws.com/temp/WhatsApp_Image_2026-11-17_at_10.43.59_AM_0bbc7fa4.jpeg"
+
+
+# =========================================================
+# FETCH CLINIC LOGO FROM S3
+# =========================================================
+
+def get_clinic_logo():
+
+    try:
+
+        request = Request(
+            CLINIC_LOGO_URL,
+            headers={
+                "User-Agent": "Mozilla/5.0"
+            }
+        )
+
+        with urlopen(request, timeout=20) as response:
+
+            if response.status != 200:
+                raise ValueError(
+                    f"S3 returned status: {response.status}"
+                )
+
+            image_data = response.read(5 * 1024 * 1024 + 1)
+
+        # Maximum image size: 5 MB
+        if len(image_data) > 5 * 1024 * 1024:
+            raise ValueError("Clinic logo exceeds 5 MB.")
+
+        if not image_data:
+            raise ValueError("Downloaded clinic logo is empty.")
+
+        # Create image buffer
+        image_buffer = BytesIO(image_data)
+
+        # Read actual image dimensions
+        image_reader = ImageReader(image_buffer)
+
+        image_width, image_height = image_reader.getSize()
+
+        if not image_width or not image_height:
+            raise ValueError("Invalid clinic logo dimensions.")
+
+        # Desired logo dimensions in PDF
+        max_width = 35 * mm
+        max_height = 35 * mm
+
+        # Maintain original aspect ratio
+        scale = min(
+            max_width / image_width,
+            max_height / image_height
+        )
+
+        logo_width = image_width * scale
+        logo_height = image_height * scale
+
+        # Use a fresh buffer for ReportLab Image
+        logo_buffer = BytesIO(image_data)
+
+        logo = Image(
+            logo_buffer,
+            width=logo_width,
+            height=logo_height
+        )
+
+        logo.hAlign = "CENTER"
+
+        return logo
+
+    except Exception:
+
+        logger.exception(
+            "Failed to load MYRAA clinic logo from S3."
+        )
+
+        return None
 
 
 # =========================================================
@@ -233,14 +325,29 @@ class InvoicePDFAPIView(APIView):
         elements = []
 
         # -------------------------------------------------
-        # CLINIC HEADER
+        # CLINIC HEADER WITH LOGO
         # -------------------------------------------------
 
+        logo = get_clinic_logo()
+
+        if logo:
+
+            elements.append(logo)
+
+            elements.append(
+                Spacer(1, 5)
+            )
+
         elements.append(
-            Paragraph(CLINIC_NAME, clinic_style)
+            Paragraph(
+                CLINIC_NAME,
+                clinic_style
+            )
         )
 
-        elements.append(Spacer(1, 3))
+        elements.append(
+            Spacer(1, 3)
+        )
 
         elements.append(
             Paragraph(
@@ -256,7 +363,9 @@ class InvoicePDFAPIView(APIView):
             )
         )
 
-        elements.append(Spacer(1, 8))
+        elements.append(
+            Spacer(1, 8)
+        )
 
         elements.append(
             HRFlowable(
@@ -266,7 +375,9 @@ class InvoicePDFAPIView(APIView):
             )
         )
 
-        elements.append(Spacer(1, 8))
+        elements.append(
+            Spacer(1, 8)
+        )
 
         # -------------------------------------------------
         # INVOICE DETAILS
@@ -275,11 +386,13 @@ class InvoicePDFAPIView(APIView):
         local_invoice_date = timezone.localtime(
             invoice.invoice_date
         )
-        local_invoice_date.strftime('%I:%M %p')
 
         invoice_details = [
             [
-                Paragraph("<b>INVOICE</b>", heading_style),
+                Paragraph(
+                    "<b>INVOICE</b>",
+                    heading_style
+                ),
                 Paragraph(
                     f"<b>Invoice No:</b> {invoice.invoice_number}",
                     right_style
@@ -311,7 +424,9 @@ class InvoicePDFAPIView(APIView):
 
         elements.append(invoice_table)
 
-        elements.append(Spacer(1, 8))
+        elements.append(
+            Spacer(1, 8)
+        )
 
         # -------------------------------------------------
         # PATIENT DETAILS
@@ -321,12 +436,21 @@ class InvoicePDFAPIView(APIView):
 
         age = calculate_age(
             patient.date_of_birth,
-            timezone.localtime(invoice.invoice_date).date()
+            local_invoice_date.date()
+        )
+
+        consultant_name = (
+            invoice.patient_visit.consultant_name
+            if invoice.patient_visit_id
+            else "-"
         )
 
         patient_data = [
             [
-                Paragraph("<b>Patient Details</b>", heading_style),
+                Paragraph(
+                    "<b>Patient Details</b>",
+                    heading_style
+                ),
                 ""
             ],
             [
@@ -335,29 +459,26 @@ class InvoicePDFAPIView(APIView):
                     normal_style
                 ),
                 Paragraph(
-                    f"<b>Patient ID:</b> {patient.id}",
+                    f"<b>Mobile:</b> {patient.mobile}",
                     normal_style
                 )
             ],
             [
-                Paragraph(
-                    f"<b>Mobile:</b> {patient.mobile}",
-                    normal_style
-                ),
                 Paragraph(
                     f"<b>Age:</b> {age} years",
                     normal_style
+                ),
+                Paragraph(
+                    f"<b>Gender:</b> {patient.gender}",
+                    normal_style
                 )
             ],
             [
                 Paragraph(
-                    f"<b>Gender:</b> {patient.gender}",
+                    f"<b>Consultant:</b> {consultant_name}",
                     normal_style
                 ),
-                Paragraph(
-                    f"<b>Billing Type:</b> {invoice.billing_type}",
-                    normal_style
-                )
+                ""
             ]
         ]
 
@@ -369,6 +490,7 @@ class InvoicePDFAPIView(APIView):
         patient_table.setStyle(
             TableStyle([
                 ("SPAN", (0, 0), (1, 0)),
+                ("SPAN", (0, 3), (1, 3)),
                 ("BACKGROUND", (0, 0), (-1, 0),
                  colors.HexColor("#EAF0F4")),
                 ("BOX", (0, 0), (-1, -1), 0.5, colors.grey),
@@ -384,29 +506,18 @@ class InvoicePDFAPIView(APIView):
         elements.append(patient_table)
 
         # -------------------------------------------------
-        # CONSULTANT DETAILS
-        # -------------------------------------------------
-
-        if invoice.patient_visit_id:
-
-            elements.append(Spacer(1, 8))
-
-            elements.append(
-                Paragraph(
-                    f"<b>Consultant:</b> "
-                    f"{invoice.patient_visit.consultant_name}",
-                    normal_style
-                )
-            )
-
-        # -------------------------------------------------
         # INVOICE ITEMS
         # -------------------------------------------------
 
-        elements.append(Spacer(1, 12))
+        elements.append(
+            Spacer(1, 12)
+        )
 
         elements.append(
-            Paragraph("Billing Details", heading_style)
+            Paragraph(
+                "Billing Details",
+                heading_style
+            )
         )
 
         item_rows = [[
@@ -465,7 +576,9 @@ class InvoicePDFAPIView(APIView):
         # BILL SUMMARY
         # -------------------------------------------------
 
-        elements.append(Spacer(1, 10))
+        elements.append(
+            Spacer(1, 10)
+        )
 
         summary_rows = [
             ["Subtotal", format_money(invoice.subtotal)],
@@ -496,10 +609,15 @@ class InvoicePDFAPIView(APIView):
         # PAYMENT DETAILS
         # -------------------------------------------------
 
-        elements.append(Spacer(1, 12))
+        elements.append(
+            Spacer(1, 12)
+        )
 
         elements.append(
-            Paragraph("Payment Details", heading_style)
+            Paragraph(
+                "Payment Details",
+                heading_style
+            )
         )
 
         payment_rows = [[
@@ -527,12 +645,20 @@ class InvoicePDFAPIView(APIView):
         if not payments:
 
             payment_rows.append([
-                "N/A", "Not Paid", "N/A", format_money(0)
+                "N/A",
+                "Not Paid",
+                "N/A",
+                format_money(0)
             ])
 
         payment_table = Table(
             payment_rows,
-            colWidths=[32 * mm, 40 * mm, 65 * mm, 35 * mm],
+            colWidths=[
+                32 * mm,
+                40 * mm,
+                65 * mm,
+                35 * mm
+            ],
             repeatRows=1
         )
 
@@ -561,7 +687,9 @@ class InvoicePDFAPIView(APIView):
             invoice.total_amount - paid_amount
         )
 
-        elements.append(Spacer(1, 8))
+        elements.append(
+            Spacer(1, 8)
+        )
 
         payment_summary = [
             [
@@ -594,7 +722,9 @@ class InvoicePDFAPIView(APIView):
         # AMOUNT IN WORDS
         # -------------------------------------------------
 
-        elements.append(Spacer(1, 10))
+        elements.append(
+            Spacer(1, 10)
+        )
 
         elements.append(
             Paragraph(
@@ -608,7 +738,9 @@ class InvoicePDFAPIView(APIView):
         # SIGNATURE SECTION
         # -------------------------------------------------
 
-        elements.append(Spacer(1, 35))
+        elements.append(
+            Spacer(1, 35)
+        )
 
         signature_data = [[
             Paragraph(
@@ -643,6 +775,7 @@ class InvoicePDFAPIView(APIView):
         document.build(elements)
 
         pdf = buffer.getvalue()
+
         buffer.close()
 
         response = HttpResponse(

@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from db.models.patient import Patient
 from db.models.appointment import Appointment
 from db.models.patient_visit import PatientVisit
+from db.models.patient_photo import PatientPhoto
 
 from shared.utils.custom_response import CustomResponse
 
@@ -34,10 +35,28 @@ def patient_history_profile(patient):
 
 
 # =========================================================
-# HELPER 2: FORMAT PATIENT VISIT
+# HELPER 2: FORMAT PATIENT VISIT WITH PHOTOS
 # =========================================================
 
 def history_visit_data(visit):
+
+    before_photos = []
+    after_photos = []
+
+    for photo in visit.photos.all():
+
+        photo_data = {
+            "id": str(photo.id),
+            "image_path": photo.image_path,
+            "description": photo.description,
+            "created_at": photo.created_at.isoformat(),
+        }
+
+        if photo.photo_type == PatientPhoto.PhotoType.BEFORE:
+            before_photos.append(photo_data)
+
+        elif photo.photo_type == PatientPhoto.PhotoType.AFTER:
+            after_photos.append(photo_data)
 
     return {
         "id": str(visit.id),
@@ -49,6 +68,12 @@ def history_visit_data(visit):
         "visit_date": visit.visit_date.isoformat(),
         "consultant_name": visit.consultant_name,
         "notes": visit.notes,
+
+        "photos": {
+            "before": before_photos,
+            "after": after_photos,
+        },
+
         "created_at": visit.created_at.isoformat(),
         "updated_at": visit.updated_at.isoformat(),
     }
@@ -82,9 +107,10 @@ def history_appointment_data(appointment):
 #
 # Returns:
 # 1. Patient profile
-# 2. Patient visit history
+# 2. Patient visit history with before/after photos
 # 3. Previous appointments
 # 4. Upcoming scheduled appointments
+
 
 class PatientHistoryAPIView(APIView):
 
@@ -115,6 +141,8 @@ class PatientHistoryAPIView(APIView):
         ).select_related(
             "patient",
             "appointment"
+        ).prefetch_related(
+            "photos"
         ).order_by(
             "-visit_date"
         )
