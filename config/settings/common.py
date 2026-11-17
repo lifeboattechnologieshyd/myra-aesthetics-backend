@@ -86,7 +86,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-print(os.environ.get("POSTGRES_PASSWORD"))
+# print(os.environ.get("POSTGRES_PASSWORD"))
 #############################
 #        DATABASES          #
 #############################
