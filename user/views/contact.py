@@ -1,14 +1,19 @@
 
 import re
+from django.conf import settings
 
 from django.utils import timezone
 from django.utils.dateparse import parse_date
-
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 
 from db.models import ContactEnquiry
 from shared.utils.custom_response import CustomResponse
+from rest_framework.parsers import FormParser, MultiPartParser
+
+from shared.utils.s3 import add_unique_suffix_to_filename, sanitize_filename
 
 
 class ContactEnquiryAPIView(APIView):
@@ -120,3 +125,63 @@ class ContactEnquiryAPIView(APIView):
                 "created_at": enquiry.created_at
             }
         )
+
+
+class FileUploadView(APIView):
+
+    permission_classes = [AllowAny]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, *args, **kwargs):
+
+        files = request.FILES.getlist("files")
+        path = request.data.get("path", "temp")
+
+
+
+        if not files:
+
+            return CustomResponse().success(
+                {"error": "No file was provided."},
+            )
+
+        uploaded_files = []
+
+        try:
+
+            for file_obj in files:
+
+
+
+                sanitized_filename = add_unique_suffix_to_filename(
+                    sanitize_filename(file_obj.name)
+                )
+
+                file_path = default_storage.save(
+                    f"{path}/{sanitized_filename}",
+                    ContentFile(file_obj.read()),
+                )
+
+                file_url = settings.MEDIA_URL + file_path
+
+                uploaded_files.append({
+                    "original_filename": file_obj.name,
+                    "file_url": file_url,
+                    "file_path": file_path,
+                })
+
+
+
+
+
+            return CustomResponse().success(
+                uploaded_files,
+            )
+
+        except Exception as e:
+
+
+
+            return CustomResponse().error(
+                {"error": str(e)},
+            )
