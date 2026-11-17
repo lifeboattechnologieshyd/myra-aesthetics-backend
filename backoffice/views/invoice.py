@@ -14,6 +14,7 @@ from rest_framework.permissions import IsAuthenticated
 from shared.utils.custom_response import CustomResponse
 
 from db.models import Patient, Service, Product, Invoice, InvoiceItem
+from db.models.patient_visit import PatientVisit
 
 
 TWO_PLACES = Decimal("0.01")
@@ -226,6 +227,8 @@ def update_payment_status(invoice):
 
 
 # COMMON INVOICE RESPONSE
+
+# COMMON INVOICE RESPONSE
 def invoice_data(invoice, include_details=False):
 
     data = {
@@ -233,6 +236,17 @@ def invoice_data(invoice, include_details=False):
         "invoice_number": invoice.invoice_number,
         "patient_id": str(invoice.patient_id),
         "patient_name": invoice.patient.full_name,
+
+        "patient_visit_id": (
+            str(invoice.patient_visit_id)
+            if invoice.patient_visit_id else None
+        ),
+
+        "consultant_name": (
+            invoice.patient_visit.consultant_name
+            if invoice.patient_visit_id else None
+        ),
+
         "invoice_date": invoice.invoice_date,
         "billing_type": invoice.billing_type,
         "subtotal": str(invoice.subtotal),
@@ -303,6 +317,29 @@ class InvoiceListCreateAPIView(APIView):
                 message="Active patient not found"
             )
 
+
+        # OPTIONAL PATIENT VISIT VALIDATION
+        patient_visit = None
+
+        patient_visit_id = request.data.get("patient_visit_id")
+
+        if patient_visit_id:
+
+            patient_visit = PatientVisit.objects.filter(
+                id=patient_visit_id
+            ).select_related("patient").first()
+
+            if not patient_visit:
+                return CustomResponse.error(
+                    message="Patient visit not found"
+                )
+
+            if patient_visit.patient_id != patient.id:
+                return CustomResponse.error(
+                    message="Selected patient visit does not belong to the selected patient"
+                )
+
+
         billing_type = request.data.get("billing_type")
 
         if billing_type not in Invoice.BillingType.values:
@@ -358,6 +395,7 @@ class InvoiceListCreateAPIView(APIView):
         invoice = Invoice(
             invoice_number=generate_invoice_number(),
             patient=patient,
+            patient_visit=patient_visit,
             invoice_date=invoice_date,
             billing_type=billing_type,
             discount_amount=discount,

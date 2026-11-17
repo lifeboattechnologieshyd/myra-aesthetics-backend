@@ -24,6 +24,10 @@ class PatientVisit(AuditModel):
 
     visit_date = models.DateTimeField()
 
+    consultant_name = models.CharField(
+        max_length=150
+    )
+
     notes = models.TextField(
         blank=True,
         null=True

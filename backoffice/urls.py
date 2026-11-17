@@ -45,6 +45,16 @@ from backoffice.views.reports import (
     InvoiceReportAPIView,
     BillingSummaryReportAPIView
 )
+
+from backoffice.views.patient_visit import (
+    PatientVisitListCreateAPIView,
+    PatientVisitDetailAPIView,
+)
+
+from backoffice.views.patient_history import PatientHistoryAPIView
+
+from backoffice.views.invoice_pdf import InvoicePDFAPIView
+
 urlpatterns = [
     #user urls
     path('login/', LoginAPIView.as_view()),
@@ -81,4 +91,13 @@ urlpatterns = [
     path("reports/patients/<uuid:patient_id>/visits/",PatientVisitHistoryAPIView.as_view()),
     path("reports/invoices/",InvoiceReportAPIView.as_view()),
     path("reports/billing/",BillingSummaryReportAPIView.as_view()),
+
+    # Patient visit URLs
+    path("patient-visits/", PatientVisitListCreateAPIView.as_view()),
+    path("patient-visits/<uuid:visit_id>/",PatientVisitDetailAPIView.as_view()),
+
+# Patient complete history
+    path("patients/<uuid:patient_id>/history/",PatientHistoryAPIView.as_view()),
+
+    path("invoices/<uuid:invoice_id>/pdf/",InvoicePDFAPIView.as_view()),
 ]

@@ -1,6 +1,7 @@
 
 from django.db import models
 
+from db.models import PatientVisit
 from db.models.base import AuditModel
 from db.models.patient import Patient
 
@@ -15,6 +16,14 @@ class Invoice(AuditModel):
         PENDING = "PENDING", "Pending"
         PARTIALLY_PAID = "PARTIALLY_PAID", "Partially Paid"
         PAID = "PAID", "Paid"
+
+    patient_visit = models.ForeignKey(
+        PatientVisit,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="invoices"
+    )
 
     invoice_number = models.CharField(
         max_length=30,
