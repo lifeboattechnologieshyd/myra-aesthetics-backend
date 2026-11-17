@@ -13,11 +13,11 @@ import os
 import time
 import psycopg
 
-host = os.environ.get("DB_HOST", "postgres")
-port = int(os.environ.get("DB_PORT", "5432"))
-user = os.environ["DB_USER"]
-password = os.environ["DB_PASSWORD"]
-database = os.environ["DB_NAME"]
+host = os.environ.get("POSTGRES_HOST", "postgres")
+port = int(os.environ.get("POSTGRES_PORT", "5432"))
+user = os.environ["POSTGRES_USER"]
+password = os.environ["POSTGRES_PASSWORD"]
+database = os.environ["POSTGRES_DB"]
 
 for attempt in range(30):
     try:
