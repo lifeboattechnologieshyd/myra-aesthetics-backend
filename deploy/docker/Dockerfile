@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
-COPY requirements/production.txt /app/requirements/production.txt
+COPY requirements/ /app/requirements/
 
 RUN pip install --upgrade pip \
     && pip install -r requirements/production.txt
