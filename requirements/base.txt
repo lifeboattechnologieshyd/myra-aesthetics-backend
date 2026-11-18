@@ -48,6 +48,7 @@ django-crontab==0.7.*
 
 num2words==0.5.14
 
+reportlab==5.1.0
 
 # Observability
 opentelemetry-api==1.31.*
@@ -58,4 +59,3 @@ opentelemetry-instrumentation-requests==0.52b1
 
 django-cors-headers==4.7.0
 
-reportlab==5.1.0
