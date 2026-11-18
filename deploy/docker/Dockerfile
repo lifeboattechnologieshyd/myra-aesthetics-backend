@@ -20,7 +20,7 @@ COPY requirements/ /app/requirements/
 
 RUN pip install --upgrade pip \
     && pip install -r requirements/production.txt
-
+RUN playwright install --with-deps chromium
 # Copy application
 COPY . /app/
 
