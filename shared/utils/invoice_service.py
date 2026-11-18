@@ -266,8 +266,7 @@ def generate_invoice_pdf(invoice_id):
             # Upload PDF to S3
             # --------------------------------------------------
 
-            # Replace this bucket setting with the actual
-            # bucket configuration used by your project.
+
             storage = StoreS3Storage(
                 bucket_name=settings.AWS_S3_BUCKET
             )
