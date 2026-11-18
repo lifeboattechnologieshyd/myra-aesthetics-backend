@@ -3,6 +3,7 @@ import uuid
 
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
+from storages.backends.s3 import S3Storage
 
 from config import settings
 
@@ -33,3 +34,11 @@ def save_to_s3(path, file_obj):
     file_path = default_storage.save(f"{path}/{sanitized_filename}", ContentFile(file_obj.read()))
     file_url = settings.MEDIA_URL + file_path
     return file_url
+
+
+class StoreS3Storage(S3Storage):
+    querystring_auth = False
+
+    def __init__(self, bucket_name, *args, **kwargs):
+        kwargs["bucket_name"] = bucket_name
+        super().__init__(*args, **kwargs)

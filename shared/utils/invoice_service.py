@@ -15,6 +15,8 @@ from num2words import num2words
 from playwright.sync_api import sync_playwright
 
 from db.models import Invoice
+from shared.utils.s3 import StoreS3Storage
+
 
 # Import StoreS3Storage from your existing storage utility
 # from your_project.storage import StoreS3Storage
