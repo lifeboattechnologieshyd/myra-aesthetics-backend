@@ -46,6 +46,8 @@ phonepe-pg-sdk-python==2.3.0
 # crons
 django-crontab==0.7.*
 
+num2words==0.5.14
+
 
 # Observability
 opentelemetry-api==1.31.*
