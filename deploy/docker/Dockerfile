@@ -19,12 +19,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements/ /app/requirements/
 
 RUN pip install --upgrade pip \
-    && pip install -r requirements/production.txt \
+    && pip install -r requirements/production.txt
 
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 RUN playwright install --with-deps chromium \
     && chmod -R 755 /ms-playwright
+
+
 # Copy application
 COPY . /app/
 
