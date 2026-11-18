@@ -250,12 +250,14 @@ def generate_invoice_pdf(invoice_id):
                     path=str(pdf_path),
                     format="A4",
                     print_background=True,
+                    prefer_css_page_size=True,
                     margin={
-                        "top": "10mm",
-                        "bottom": "10mm",
-                        "left": "10mm",
-                        "right": "10mm",
+                        "top": "5mm",
+                        "bottom": "5mm",
+                        "left": "5mm",
+                        "right": "5mm",
                     },
+                    scale=0.90,
                 )
 
                 browser.close()
