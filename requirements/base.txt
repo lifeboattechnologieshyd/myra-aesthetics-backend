@@ -50,6 +50,9 @@ num2words==0.5.14
 
 reportlab==5.1.0
 
+# PDF generation
+playwright==1.65.2
+
 # Observability
 opentelemetry-api==1.31.*
 opentelemetry-sdk==1.31.*

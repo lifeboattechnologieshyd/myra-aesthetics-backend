@@ -84,6 +84,10 @@ class Invoice(AuditModel):
         choices=PaymentStatus.choices,
         default=PaymentStatus.PENDING
     )
+    invoice_pdf = models.TextField(
+        null=True,
+        blank=True,
+    )
 
     class Meta:
         db_table = "invoice"
