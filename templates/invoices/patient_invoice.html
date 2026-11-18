@@ -1,155 +1,631 @@
 
-/* Compact A4 invoice - fit on one page */
-@page {
-    size: A4;
-    margin: 5mm;
-}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Invoice {{ invoice_number }}</title>
 
-@media print {
-    body {
-        margin: 0;
-        padding: 0;
-        background: #ffffff;
-    }
+    <style>
+        @page {
+            size: A4;
+            margin: 5mm;
+        }
 
-    .invoice {
-        width: 100%;
-        min-height: 0;
-        margin: 0;
-        padding: 12px;
-    }
+        * {
+            box-sizing: border-box;
+        }
 
-    .header {
-        padding-bottom: 10px;
-    }
+        body {
+            margin: 0;
+            padding: 0;
+            background: #ffffff;
+            color: #222222;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 11px;
+        }
 
-    .clinic-section {
-        gap: 10px;
-    }
+        .invoice {
+            width: 100%;
+            min-height: 0;
+            margin: 0 auto;
+            padding: 12px;
+            background: #ffffff;
+        }
 
-    .logo {
-        width: 65px;
-        height: 65px;
-        font-size: 14px;
-    }
+        /* Header */
 
-    .clinic-name {
-        font-size: 22px;
-    }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #dca000;
+        }
 
-    .tagline {
-        font-size: 12px;
-        letter-spacing: 2px;
-        margin: 3px 0;
-    }
+        .clinic-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
 
-    .clinic-details {
-        font-size: 11px;
-        line-height: 1.3;
-    }
+        .logo {
+            width: 65px;
+            height: 65px;
+            min-width: 65px;
+            border: 2px solid #dca000;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            font-size: 14px;
+            font-weight: 700;
+            color: #1b1b1b;
+        }
 
-    .bill-title {
-        padding-left: 12px;
-    }
+        .logo img {
+            max-width: 58px;
+            max-height: 58px;
+            object-fit: contain;
+        }
 
-    .bill-title h1 {
-        font-size: 23px;
-        margin-bottom: 5px;
-    }
+        .clinic-name {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 800;
+        }
 
-    .bill-title p {
-        font-size: 12px;
-    }
+        .tagline {
+            margin: 3px 0;
+            color: #555555;
+            font-size: 12px;
+            letter-spacing: 2px;
+        }
 
-    .bill-date {
-        margin: 12px 0;
-        gap: 25px;
-        font-size: 13px;
-    }
+        .clinic-details {
+            margin: 4px 0 0;
+            font-size: 11px;
+            line-height: 1.4;
+        }
 
-    .section-title {
-        padding: 6px 14px;
-        font-size: 13px;
-    }
+        .bill-title {
+            padding-left: 12px;
+            border-left: 2px solid #999999;
+            text-align: right;
+        }
 
-    .patient-box {
-        margin-bottom: 12px;
-        padding: 10px;
-    }
+        .bill-title h1 {
+            margin: 0 0 5px;
+            font-size: 23px;
+            font-weight: 800;
+        }
 
-    .patient-row {
-        grid-template-columns: 100px 1fr 65px 1fr;
-        gap: 5px;
-        margin-bottom: 5px;
-        font-size: 12px;
-    }
+        .bill-title p {
+            margin: 0;
+            font-size: 11px;
+            overflow-wrap: anywhere;
+        }
 
-    .items-table {
-        margin-top: 6px;
-        margin-bottom: 12px;
-    }
+        /* Invoice Date */
 
-    .items-table th {
-        padding: 7px;
-        font-size: 12px;
-    }
+        .bill-date {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 12px 0;
+            font-size: 12px;
+            font-weight: 600;
+        }
 
-    .items-table td {
-        padding: 7px;
-        font-size: 11px;
-    }
+        /* Section Heading */
 
-    .bottom-section {
-        gap: 12px;
-        padding-top: 12px;
-    }
+        .section-title {
+            display: inline-block;
+            margin: 0;
+            padding: 6px 14px;
+            border-radius: 7px 7px 7px 0;
+            background: linear-gradient(
+                90deg,
+                #f0bf46,
+                #fff0c5
+            );
+            font-size: 12px;
+            font-weight: 800;
+        }
 
-    .payment-box {
-        padding: 10px;
-    }
+        /* Patient Information */
 
-    .payment-row {
-        grid-template-columns: 110px 1fr;
-        margin: 6px 0;
-        font-size: 11px;
-    }
+        .patient-box,
+        .payment-box,
+        .summary-box {
+            border: 1px solid #a5a5a5;
+            border-radius: 7px;
+        }
 
-    .summary-box td {
-        padding: 5px 8px;
-        font-size: 11px;
-    }
+        .patient-box {
+            margin-bottom: 12px;
+            padding: 10px;
+        }
 
-    .total-row td {
-        font-size: 13px;
-    }
+        .patient-row {
+            display: grid;
+            grid-template-columns: 100px 1fr 65px 1fr;
+            gap: 6px;
+            margin-bottom: 5px;
+            font-size: 11px;
+            align-items: center;
+        }
 
-    .words-box {
-        margin-top: 12px;
-        padding: 9px 12px;
-        font-size: 11px;
-    }
+        .patient-row:last-child {
+            margin-bottom: 0;
+        }
 
-    .signatures {
-        margin-top: 25px;
-        padding: 0 25px;
-    }
+        .label {
+            font-weight: 700;
+        }
 
-    .signature {
-        width: 200px;
-        padding-top: 5px;
-        font-size: 11px;
-    }
+        /* Items Table */
 
-    .footer {
-        margin-top: 18px;
-        font-size: 11px;
-    }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
 
-    .footer p {
-        margin: 5px 0;
-    }
+        .items-table {
+            margin: 6px 0 12px;
+            border: 1px solid #a5a5a5;
+            border-radius: 7px;
+            overflow: hidden;
+        }
 
-    .thank-you {
-        font-size: 14px;
-    }
-}
+        .items-table th {
+            padding: 7px;
+            background: #fff0c5;
+            border: 1px solid #c5c5c5;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .items-table td {
+            padding: 7px;
+            border: 1px solid #c5c5c5;
+            font-size: 10px;
+        }
+
+        .items-table tr {
+            page-break-inside: avoid;
+        }
+
+        .center {
+            text-align: center;
+        }
+
+        .right {
+            text-align: right;
+        }
+
+        /* Payment and Summary */
+
+        .bottom-section {
+            display: grid;
+            grid-template-columns: 1fr 1.1fr;
+            gap: 12px;
+            border-top: 1px solid #a5a5a5;
+            padding-top: 12px;
+        }
+
+        .payment-box {
+            padding: 10px;
+        }
+
+        .payment-row {
+            display: grid;
+            grid-template-columns: 110px 1fr;
+            gap: 5px;
+            margin: 7px 0;
+            font-size: 10px;
+        }
+
+        .summary-box {
+            overflow: hidden;
+        }
+
+        .summary-box td {
+            padding: 5px 8px;
+            border: 1px solid #c5c5c5;
+            font-size: 10px;
+        }
+
+        .summary-box td:first-child {
+            font-weight: 700;
+        }
+
+        .total-row td {
+            background: #ffe6a4;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        /* Amount in Words */
+
+        .words-box {
+            margin-top: 12px;
+            padding: 9px 12px;
+            border-radius: 6px;
+            background: #f1f1f1;
+            font-size: 10px;
+            line-height: 1.5;
+        }
+
+        /* Signatures */
+
+        .signatures {
+            display: flex;
+            justify-content: space-between;
+            gap: 30px;
+            margin-top: 30px;
+            padding: 0 25px;
+        }
+
+        .signature {
+            width: 200px;
+            padding-top: 5px;
+            border-top: 1px solid #222222;
+            text-align: center;
+            font-size: 10px;
+        }
+
+        /* Footer */
+
+        .footer {
+            margin-top: 18px;
+            text-align: center;
+            font-size: 10px;
+        }
+
+        .footer p {
+            margin: 5px 0;
+        }
+
+        .thank-you {
+            color: #222222;
+            font-size: 14px;
+            font-style: italic;
+            font-weight: 700;
+        }
+
+        /* Print Settings */
+
+        @media print {
+            html,
+            body {
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                background: #ffffff;
+            }
+
+            .invoice {
+                width: 100%;
+                min-height: 0;
+                margin: 0;
+                padding: 12px;
+            }
+
+            .header,
+            .patient-box,
+            .items-table,
+            .bottom-section,
+            .words-box,
+            .signatures,
+            .footer {
+                page-break-inside: avoid;
+            }
+
+            .items-table thead {
+                display: table-header-group;
+            }
+
+            .items-table tr {
+                page-break-inside: avoid;
+            }
+
+            * {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main class="invoice">
+
+        <!-- Clinic Header -->
+
+        <header class="header">
+
+            <section class="clinic-section">
+
+                <div class="logo">
+                    {% if clinic_logo_url %}
+                        <img
+                            src="{{ clinic_logo_url }}"
+                            alt="{{ clinic_name }}"
+                        >
+                    {% else %}
+                        MYRAA
+                    {% endif %}
+                </div>
+
+                <div>
+                    <h2 class="clinic-name">
+                        {{ clinic_name }}
+                    </h2>
+
+                    <p class="tagline">
+                        {{ clinic_tagline }}
+                    </p>
+
+                    <p class="clinic-details">
+                        {{ clinic_address }}<br>
+                        Contact: {{ clinic_contact }}
+                    </p>
+                </div>
+
+            </section>
+
+            <section class="bill-title">
+                <h1>PATIENT BILL</h1>
+                <p>Bill No: {{ invoice_number }}</p>
+            </section>
+
+        </header>
+
+        <!-- Invoice Date and Time -->
+
+        <section class="bill-date">
+            <span>
+                Bill Date: {{ invoice_date }}
+            </span>
+
+            <span>
+                Time: {{ invoice_time }}
+            </span>
+        </section>
+
+        <!-- Patient Information -->
+
+        <h3 class="section-title">
+            PATIENT INFORMATION
+        </h3>
+
+        <section class="patient-box">
+
+            <div class="patient-row">
+
+                <span class="label">
+                    Patient Name
+                </span>
+
+                <span>
+                    {{ patient_name }}
+                </span>
+
+                <span class="label">
+                    Mobile
+                </span>
+
+                <span>
+                    {{ patient_mobile }}
+                </span>
+
+            </div>
+
+        </section>
+
+        <!-- Invoice Items -->
+
+        <section class="items-table">
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th style="width: 8%;">S.No</th>
+                        <th style="width: 42%;">Treatment / Service</th>
+                        <th style="width: 12%;">Qty</th>
+                        <th style="width: 18%;">Rate (₹)</th>
+                        <th style="width: 20%;">Amount (₹)</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for item in items %}
+
+                    <tr>
+                        <td class="center">
+                            {{ forloop.counter }}
+                        </td>
+
+                        <td>
+                            {{ item.item_name }}
+                        </td>
+
+                        <td class="center">
+                            {{ item.quantity }}
+                        </td>
+
+                        <td class="right">
+                            {{ item.unit_price|floatformat:2 }}
+                        </td>
+
+                        <td class="right">
+                            {{ item.total_price|floatformat:2 }}
+                        </td>
+                    </tr>
+
+                    {% empty %}
+
+                    <tr>
+                        <td colspan="5" class="center">
+                            No invoice items found.
+                        </td>
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </section>
+
+        <!-- Payment and Amount Summary -->
+
+        <section class="bottom-section">
+
+            <div>
+
+                <h3 class="section-title">
+                    PAYMENT INFORMATION
+                </h3>
+
+                <section class="payment-box">
+
+                    <div class="payment-row">
+                        <span class="label">Payment Mode</span>
+                        <span>{{ payment_mode }}</span>
+                    </div>
+
+                    <div class="payment-row">
+                        <span class="label">Receipt No</span>
+                        <span>{{ receipt_number }}</span>
+                    </div>
+
+                    <div class="payment-row">
+                        <span class="label">Amount Received</span>
+                        <span>
+                            ₹{{ amount_received|floatformat:2 }}
+                        </span>
+                    </div>
+
+                    <div class="payment-row">
+                        <span class="label">Balance</span>
+                        <span>
+                            ₹{{ balance_due|floatformat:2 }}
+                        </span>
+                    </div>
+
+                    <div class="payment-row">
+                        <span class="label">Status</span>
+                        <span>{{ payment_status }}</span>
+                    </div>
+
+                </section>
+
+            </div>
+
+            <!-- Amount Summary -->
+
+            <section class="summary-box">
+
+                <table>
+
+                    <tr>
+                        <td>Subtotal</td>
+                        <td class="right">
+                            ₹{{ subtotal|floatformat:2 }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>Discount</td>
+                        <td class="right">
+                            ₹{{ discount_amount|floatformat:2 }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>
+                            Tax{% if gst_rate %} ({{ gst_rate }}%){% endif %}
+                        </td>
+
+                        <td class="right">
+                            ₹{{ gst_amount|floatformat:2 }}
+                        </td>
+                    </tr>
+
+                    <tr class="total-row">
+                        <td>TOTAL AMOUNT</td>
+                        <td class="right">
+                            ₹{{ total_amount|floatformat:2 }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>Amount Paid</td>
+                        <td class="right">
+                            ₹{{ amount_received|floatformat:2 }}
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>Balance Due</td>
+                        <td class="right">
+                            ₹{{ balance_due|floatformat:2 }}
+                        </td>
+                    </tr>
+
+                </table>
+
+            </section>
+
+        </section>
+
+        <!-- Amount in Words -->
+
+        <section class="words-box">
+
+            <strong>Amount in words:</strong>
+
+            <em>
+                {{ amount_in_words }}
+            </em>
+
+        </section>
+
+        <!-- Signatures -->
+
+        <section class="signatures">
+
+            <div class="signature">
+                Patient Signature
+            </div>
+
+            <div class="signature">
+                Authorised Signatory
+            </div>
+
+        </section>
+
+        <!-- Footer -->
+
+        <footer class="footer">
+
+            <p>
+                <em>
+                    Please retain this bill for your records.
+                </em>
+            </p>
+
+            <p class="thank-you">
+                Thank you for choosing {{ clinic_name }}.
+            </p>
+
+        </footer>
+
+    </main>
+</body>
+</html>
