@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
 
     'corsheaders',
+    'storages'
 ]
 
 MIDDLEWARE = [
@@ -249,3 +250,13 @@ elif AWS_S3_USE_SSL:
     MEDIA_URL = f"https://{AWS_S3_BUCKET}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/"
 else:
     MEDIA_URL = f"http://{AWS_S3_BUCKET}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/"
+
+    ##### clinic bill ####
+CLINIC_NAME = "MYRAA AESTHETICS"
+CLINIC_TAGLINE = "SKIN • HAIR • LASER"
+
+CLINIC_ADDRESS = "MYRAA Aesthetics, 1st Floor, Kapil Kakatiya Towers, Beside Barbeque Nation, Nakkalagutta, Hanamkonda, Warangal – 506001"
+
+CLINIC_CONTACT = "+91 8191966999"
+
+CLINIC_LOGO_URL = "https://myra-development.s3.ap-south-1.amazonaws.com/temp/Subject_2_d32947ac.png"
