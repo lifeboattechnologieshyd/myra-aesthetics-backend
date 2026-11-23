@@ -107,18 +107,6 @@ def invoice_item_data(item):
     }
 
 
-# COMMON PAYMENT RESPONSE
-def invoice_payment_data(payment):
-
-    return {
-        "id": str(payment.id),
-        "amount": str(payment.amount),
-        "payment_method": payment.payment_method,
-        "payment_date": payment.payment_date,
-        "reference_number": payment.reference_number
-    }
-
-
 # CALCULATE INVOICE TOTALS
 def update_invoice_totals(invoice):
 
@@ -196,38 +184,6 @@ def update_invoice_totals(invoice):
     invoice.save()
 
 
-# UPDATE PAYMENT STATUS
-def update_payment_status(invoice):
-
-    paid_amount = sum(
-        (
-            payment.amount
-            for payment in invoice.payments.all()
-        ),
-        Decimal("0.00")
-    )
-
-    if paid_amount <= 0:
-        invoice.payment_status = Invoice.PaymentStatus.PENDING
-
-    elif paid_amount >= invoice.total_amount:
-        invoice.payment_status = Invoice.PaymentStatus.PAID
-
-    else:
-        invoice.payment_status = (
-            Invoice.PaymentStatus.PARTIALLY_PAID
-        )
-
-    invoice.save(
-        update_fields=[
-            "payment_status",
-            "updated_at"
-        ]
-    )
-
-
-# COMMON INVOICE RESPONSE
-
 # COMMON INVOICE RESPONSE
 def invoice_data(invoice, include_details=False):
 
@@ -255,33 +211,14 @@ def invoice_data(invoice, include_details=False):
         "gst_rate": str(invoice.gst_rate),
         "gst_amount": str(invoice.gst_amount),
         "total_amount": str(invoice.total_amount),
-        "payment_status": invoice.payment_status
+        "invoice_pdf": invoice.invoice_pdf,
     }
 
     if include_details:
-
-        payments = list(invoice.payments.all())
-
-        paid_amount = sum(
-            (payment.amount for payment in payments),
-            Decimal("0.00")
-        )
-
         data["items"] = [
             invoice_item_data(item)
             for item in invoice.items.all()
         ]
-
-        data["payments"] = [
-            invoice_payment_data(payment)
-            for payment in payments
-        ]
-
-        data["paid_amount"] = str(money(paid_amount))
-
-        data["balance_amount"] = str(
-            money(invoice.total_amount - paid_amount)
-        )
 
     return data
 
@@ -564,7 +501,6 @@ class InvoiceListCreateAPIView(APIView):
 
         invoice_number = request.query_params.get("invoice_number")
         patient_id = request.query_params.get("patient_id")
-        payment_status = request.query_params.get("payment_status")
         billing_type = request.query_params.get("billing_type")
         start_date = request.query_params.get("start_date")
         end_date = request.query_params.get("end_date")
@@ -577,17 +513,6 @@ class InvoiceListCreateAPIView(APIView):
         if patient_id:
             invoices = invoices.filter(
                 patient_id=patient_id
-            )
-
-        if payment_status:
-
-            if payment_status not in Invoice.PaymentStatus.values:
-                return CustomResponse.error(
-                    message="Invalid payment_status"
-                )
-
-            invoices = invoices.filter(
-                payment_status=payment_status
             )
 
         if billing_type:
@@ -731,14 +656,6 @@ class InvoiceDetailAPIView(APIView):
                 message="Invalid fields provided"
             )
 
-        if (
-            "discount_amount" in request.data
-            and invoice.payments.exists()
-        ):
-            return CustomResponse.error(
-                message="Discount cannot be changed after a payment is recorded"
-            )
-
         if "invoice_date" in request.data:
 
             value = request.data.get("invoice_date")
@@ -782,6 +699,7 @@ class InvoiceDetailAPIView(APIView):
                 )
 
         invoice.updated_by = request.user.username
+        invoice.invoice_pdf = None
         invoice.save()
 
         if "discount_amount" in request.data:

@@ -16,7 +16,6 @@ from db.models import (
     Appointment,
     Invoice,
     InvoiceItem,
-    InvoicePayment
 )
 
 from shared.utils.custom_response import CustomResponse
@@ -424,13 +423,11 @@ class InvoiceReportAPIView(APIView):
 
     def get(self, request):
 
-        # Validate date range
         start_date, end_date, error = get_date_range(request)
 
         if error:
             return CustomResponse.error(message=error)
 
-        # Validate grouping
         group_by = get_grouping(request)
 
         if not group_by:
@@ -438,7 +435,6 @@ class InvoiceReportAPIView(APIView):
                 message="Invalid group_by. Use daily or monthly."
             )
 
-        # Filter invoices by invoice date
         invoices = Invoice.objects.all()
 
         invoices = apply_date_filter(
@@ -448,17 +444,6 @@ class InvoiceReportAPIView(APIView):
             end_date
         )
 
-        # Filter payments by payment date
-        payments = InvoicePayment.objects.all()
-
-        payments = apply_date_filter(
-            payments,
-            "payment_date",
-            start_date,
-            end_date
-        )
-
-        # Group invoices by day or month
         invoice_period = get_period_expression(
             group_by,
             "invoice_date"
@@ -475,24 +460,6 @@ class InvoiceReportAPIView(APIView):
             .order_by("report_period")
         )
 
-        # Group payments by day or month
-        payment_period = get_period_expression(
-            group_by,
-            "payment_date"
-        )
-
-        payment_summary = (
-            payments
-            .annotate(report_period=payment_period)
-            .values("report_period")
-            .annotate(
-                payment_count=Count("id"),
-                collected_amount=Sum("amount")
-            )
-            .order_by("report_period")
-        )
-
-        # Format invoice summary
         invoice_data = [
             {
                 "period": format_period(
@@ -505,39 +472,9 @@ class InvoiceReportAPIView(APIView):
             for row in invoice_summary
         ]
 
-        # Format collection summary
-        collection_data = [
-            {
-                "period": format_period(
-                    row["report_period"],
-                    group_by
-                ),
-                "payment_count": row["payment_count"],
-                "collected_amount": row["collected_amount"] or ZERO
-            }
-            for row in payment_summary
-        ]
-
-        # Total billed amount for selected invoices
         billed_amount = invoices.aggregate(
             total=Sum("total_amount")
         )["total"] or ZERO
-
-        # Collections received during selected payment date range
-        collected_amount = payments.aggregate(
-            total=Sum("amount")
-        )["total"] or ZERO
-
-        # All payments received against the selected invoices,
-        # regardless of when those payments were recorded
-        paid_against_invoices = InvoicePayment.objects.filter(
-            invoice__in=invoices
-        ).aggregate(
-            total=Sum("amount")
-        )["total"] or ZERO
-
-        # Outstanding balance for selected invoices
-        outstanding_balance = billed_amount - paid_against_invoices
 
         return CustomResponse.success(
             message="Invoice report retrieved successfully.",
@@ -547,10 +484,7 @@ class InvoiceReportAPIView(APIView):
                 "end_date": end_date,
                 "total_invoices": invoices.count(),
                 "total_billed_amount": billed_amount,
-                "total_recorded_collections": collected_amount,
-                "balance": outstanding_balance,
-                "invoice_summary": invoice_data,
-                "collection_summary": collection_data
+                "invoice_summary": invoice_data
             }
         )
 
@@ -623,6 +557,7 @@ class BillingSummaryReportAPIView(APIView):
 # 8. COMBINED DASHBOARD REPORT
 # --------------------------------------------------
 
+
 class DashboardReportAPIView(APIView):
 
     permission_classes = [IsAuthenticated]
@@ -664,19 +599,8 @@ class DashboardReportAPIView(APIView):
             end_date
         )
 
-        payments = apply_date_filter(
-            InvoicePayment.objects.all(),
-            "payment_date",
-            start_date,
-            end_date
-        )
-
         billed_amount = invoices.aggregate(
             total=Sum("total_amount")
-        )["total"] or ZERO
-
-        collected_amount = payments.aggregate(
-            total=Sum("amount")
         )["total"] or ZERO
 
         return CustomResponse.success(
@@ -720,9 +644,7 @@ class DashboardReportAPIView(APIView):
 
                 "invoices": {
                     "total_invoices": invoices.count(),
-                    "billed_amount": billed_amount,
-                    "recorded_collections": collected_amount,
-                    "balance": billed_amount - collected_amount
+                    "billed_amount": billed_amount
                 }
             }
         )

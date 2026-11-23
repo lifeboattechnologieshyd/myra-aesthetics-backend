@@ -86,35 +86,11 @@ def generate_invoice_pdf(invoice_id):
             )
             .prefetch_related(
                 "items",
-                "payments",
             )
             .get(id=invoice_id)
         )
 
         invoice_items = list(invoice.items.all())
-        invoice_payments = list(invoice.payments.all())
-
-        # --------------------------------------------------
-        # Calculate payment details
-        # --------------------------------------------------
-        amount_paid = sum(
-            (
-                payment.amount
-                for payment in invoice_payments
-            ),
-            Decimal("0.00"),
-        )
-
-        balance_due = max(
-            invoice.total_amount - amount_paid,
-            Decimal("0.00"),
-        )
-
-        latest_payment = (
-            invoice_payments[0]
-            if invoice_payments
-            else None
-        )
 
         invoice_datetime = get_local_datetime(
             invoice.invoice_date
@@ -164,7 +140,6 @@ def generate_invoice_pdf(invoice_id):
                 else "N/A"
             ),
             "billing_type": invoice.get_billing_type_display(),
-            "payment_status": invoice.get_payment_status_display(),
 
             # Patient details
             "patient_name": get_patient_name(invoice.patient),
@@ -176,20 +151,6 @@ def generate_invoice_pdf(invoice_id):
             # Items
             "items": invoice_items,
 
-            # Payment details
-            "payment_mode": (
-                latest_payment.get_payment_method_display()
-                if latest_payment
-                else "Pending"
-            ),
-            "receipt_number": (
-                latest_payment.reference_number
-                if latest_payment
-                and latest_payment.reference_number
-                else "N/A"
-            ),
-            "amount_received": amount_paid,
-            "balance_due": balance_due,
 
             # Totals
             "subtotal": invoice.subtotal,

@@ -21,7 +21,7 @@
             background: #ffffff;
             color: #222222;
             font-family: Arial, Helvetica, sans-serif;
-            font-size: 11px;
+            font-size: 13px;
         }
 
         .invoice {
@@ -71,38 +71,38 @@
 
         .clinic-name {
             margin: 0;
-            font-size: 22px;
+            font-size: 26px;
             font-weight: 800;
         }
 
         .tagline {
             margin: 3px 0;
             color: #555555;
-            font-size: 12px;
+            font-size: 14px;
             letter-spacing: 2px;
         }
 
         .clinic-details {
             margin: 4px 0 0;
-            font-size: 11px;
+            font-size: 13px;
             line-height: 1.4;
         }
 
         .bill-title {
-            padding-left: 12px;
+            padding-left: 8px;
             border-left: 2px solid #999999;
-            text-align: right;
+            text-align: left;
         }
 
         .bill-title h1 {
             margin: 0 0 5px;
-            font-size: 23px;
+            font-size: 18px;
             font-weight: 800;
         }
 
         .bill-title p {
             margin: 0;
-            font-size: 11px;
+            font-size: 13px;
             overflow-wrap: anywhere;
         }
 
@@ -112,7 +112,7 @@
             display: flex;
             justify-content: center;
             gap: 30px;
-            margin: 12px 0;
+            margin: 14px 0;
             font-size: 12px;
             font-weight: 600;
         }
@@ -129,30 +129,29 @@
                 #f0bf46,
                 #fff0c5
             );
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 800;
         }
 
         /* Patient Information */
 
         .patient-box,
-        .payment-box,
         .summary-box {
             border: 1px solid #a5a5a5;
             border-radius: 7px;
         }
 
         .patient-box {
-            margin-bottom: 12px;
-            padding: 10px;
+            margin-bottom: 14px;
+            padding: 12px;
         }
 
         .patient-row {
             display: grid;
             grid-template-columns: 100px 1fr 65px 1fr;
-            gap: 6px;
-            margin-bottom: 5px;
-            font-size: 11px;
+            gap: 8px;
+            margin-bottom: 7px;
+            font-size: 13px;
             align-items: center;
         }
 
@@ -179,17 +178,17 @@
         }
 
         .items-table th {
-            padding: 7px;
+            padding: 9px;
             background: #fff0c5;
             border: 1px solid #c5c5c5;
-            font-size: 11px;
+            font-size: 13px;
             font-weight: 700;
         }
 
         .items-table td {
-            padding: 7px;
+            padding: 9px;
             border: 1px solid #c5c5c5;
-            font-size: 10px;
+            font-size: 12px;
         }
 
         .items-table tr {
@@ -204,26 +203,11 @@
             text-align: right;
         }
 
-        /* Payment and Summary */
+        /* Bill Summary */
 
-        .bottom-section {
-            display: grid;
-            grid-template-columns: 1fr 1.1fr;
-            gap: 12px;
-            border-top: 1px solid #a5a5a5;
-            padding-top: 12px;
-        }
-
-        .payment-box {
-            padding: 10px;
-        }
-
-        .payment-row {
-            display: grid;
-            grid-template-columns: 110px 1fr;
-            gap: 5px;
-            margin: 7px 0;
-            font-size: 10px;
+        .bill-summary {
+            margin-top: 12px;
+            page-break-inside: avoid;
         }
 
         .summary-box {
@@ -231,9 +215,9 @@
         }
 
         .summary-box td {
-            padding: 5px 8px;
+            padding: 8px 10px;
             border: 1px solid #c5c5c5;
-            font-size: 10px;
+            font-size: 12px;
         }
 
         .summary-box td:first-child {
@@ -242,18 +226,18 @@
 
         .total-row td {
             background: #ffe6a4;
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 800;
         }
 
         /* Amount in Words */
 
         .words-box {
-            margin-top: 12px;
-            padding: 9px 12px;
+            margin-top: 14px;
+            padding: 12px 14px;
             border-radius: 6px;
             background: #f1f1f1;
-            font-size: 10px;
+            font-size: 12px;
             line-height: 1.5;
         }
 
@@ -272,7 +256,7 @@
             padding-top: 5px;
             border-top: 1px solid #222222;
             text-align: center;
-            font-size: 10px;
+            font-size: 12px;
         }
 
         /* Footer */
@@ -280,7 +264,7 @@
         .footer {
             margin-top: 18px;
             text-align: center;
-            font-size: 10px;
+            font-size: 12px;
         }
 
         .footer p {
@@ -289,7 +273,7 @@
 
         .thank-you {
             color: #222222;
-            font-size: 14px;
+            font-size: 16px;
             font-style: italic;
             font-weight: 700;
         }
@@ -315,7 +299,7 @@
             .header,
             .patient-box,
             .items-table,
-            .bottom-section,
+            .bill-summary,
             .words-box,
             .signatures,
             .footer {
@@ -482,107 +466,57 @@
 
         </section>
 
-        <!-- Payment and Amount Summary -->
+        <!-- Amount Summary -->
 
-        <section class="bottom-section">
 
-            <div>
+<!-- Amount Summary -->
 
-                <h3 class="section-title">
-                    PAYMENT INFORMATION
-                </h3>
+<section class="bill-summary">
 
-                <section class="payment-box">
+    <h3 class="section-title">
+        BILL SUMMARY
+    </h3>
 
-                    <div class="payment-row">
-                        <span class="label">Payment Mode</span>
-                        <span>{{ payment_mode }}</span>
-                    </div>
+    <section class="summary-box">
 
-                    <div class="payment-row">
-                        <span class="label">Receipt No</span>
-                        <span>{{ receipt_number }}</span>
-                    </div>
+        <table>
 
-                    <div class="payment-row">
-                        <span class="label">Amount Received</span>
-                        <span>
-                            ₹{{ amount_received|floatformat:2 }}
-                        </span>
-                    </div>
+            <tr>
+                <td>Subtotal</td>
+                <td class="right">
+                    ₹{{ subtotal|floatformat:2 }}
+                </td>
+            </tr>
 
-                    <div class="payment-row">
-                        <span class="label">Balance</span>
-                        <span>
-                            ₹{{ balance_due|floatformat:2 }}
-                        </span>
-                    </div>
+            <tr>
+                <td>Discount</td>
+                <td class="right">
+                    ₹{{ discount_amount|floatformat:2 }}
+                </td>
+            </tr>
 
-                    <div class="payment-row">
-                        <span class="label">Status</span>
-                        <span>{{ payment_status }}</span>
-                    </div>
+            <tr>
+                <td>
+                    Tax{% if gst_rate %} ({{ gst_rate }}%){% endif %}
+                </td>
+                <td class="right">
+                    ₹{{ gst_amount|floatformat:2 }}
+                </td>
+            </tr>
 
-                </section>
+            <tr class="total-row">
+                <td>TOTAL AMOUNT</td>
+                <td class="right">
+                    ₹{{ total_amount|floatformat:2 }}
+                </td>
+            </tr>
 
-            </div>
+        </table>
 
-            <!-- Amount Summary -->
+    </section>
 
-            <section class="summary-box">
+</section>
 
-                <table>
-
-                    <tr>
-                        <td>Subtotal</td>
-                        <td class="right">
-                            ₹{{ subtotal|floatformat:2 }}
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td>Discount</td>
-                        <td class="right">
-                            ₹{{ discount_amount|floatformat:2 }}
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td>
-                            Tax{% if gst_rate %} ({{ gst_rate }}%){% endif %}
-                        </td>
-
-                        <td class="right">
-                            ₹{{ gst_amount|floatformat:2 }}
-                        </td>
-                    </tr>
-
-                    <tr class="total-row">
-                        <td>TOTAL AMOUNT</td>
-                        <td class="right">
-                            ₹{{ total_amount|floatformat:2 }}
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td>Amount Paid</td>
-                        <td class="right">
-                            ₹{{ amount_received|floatformat:2 }}
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td>Balance Due</td>
-                        <td class="right">
-                            ₹{{ balance_due|floatformat:2 }}
-                        </td>
-                    </tr>
-
-                </table>
-
-            </section>
-
-        </section>
 
         <!-- Amount in Words -->
 

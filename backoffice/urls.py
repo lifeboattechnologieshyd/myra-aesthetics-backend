@@ -31,10 +31,6 @@ from backoffice.views.invoice import (
     InvoiceDetailAPIView
 )
 
-from backoffice.views.invoice_payment import (
-    InvoicePaymentAPIView
-)
-
 from backoffice.views.reports import (
     DashboardReportAPIView,
     PatientRegistrationReportAPIView,
@@ -81,7 +77,6 @@ urlpatterns = [
 
     path("invoices/",InvoiceListCreateAPIView.as_view()),
     path("invoices/<uuid:invoice_id>/",InvoiceDetailAPIView.as_view()),
-    path("invoices/<uuid:invoice_id>/payments/",InvoicePaymentAPIView.as_view()),
 
     #report_urls
     path("reports/dashboard/",DashboardReportAPIView.as_view()),
