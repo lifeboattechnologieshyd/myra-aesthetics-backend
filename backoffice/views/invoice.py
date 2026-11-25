@@ -108,10 +108,13 @@ def invoice_item_data(item):
 
 
 # CALCULATE INVOICE TOTALS
+
+# CALCULATE INVOICE TOTALS
 def update_invoice_totals(invoice):
 
     items = list(invoice.items.all())
 
+    # 1. Calculate subtotal before GST
     subtotal = money(
         sum(
             (item.total_price for item in items),
@@ -119,37 +122,14 @@ def update_invoice_totals(invoice):
         )
     )
 
-    discount = money(invoice.discount_amount)
-
-    if discount < 0 or discount > subtotal:
-        raise ValueError("Discount cannot exceed subtotal")
-
-    taxable_amount = money(subtotal - discount)
-
+    # 2. Calculate GST on each item's FULL amount.
+    # No discount allocation at item level.
     gst_amount = Decimal("0.00")
-    remaining_discount = discount
 
-    for index, item in enumerate(items):
-
-        # Allocate discount proportionally across invoice items.
-        if index == len(items) - 1:
-            item_discount = remaining_discount
-
-        elif subtotal > 0:
-            item_discount = money(
-                discount * item.total_price / subtotal
-            )
-            remaining_discount -= item_discount
-
-        else:
-            item_discount = Decimal("0.00")
-
-        item_taxable_amount = money(
-            item.total_price - item_discount
-        )
+    for item in items:
 
         item.gst_amount = money(
-            item_taxable_amount * item.gst_rate / Decimal("100")
+            item.total_price * item.gst_rate / Decimal("100")
         )
 
         item.updated_by = invoice.updated_by
@@ -166,13 +146,29 @@ def update_invoice_totals(invoice):
 
     gst_amount = money(gst_amount)
 
-    invoice.subtotal = subtotal
-    invoice.taxable_amount = taxable_amount
-    invoice.gst_amount = gst_amount
-    invoice.total_amount = money(taxable_amount + gst_amount)
+    # 3. Calculate gross total after GST
+    gross_total = money(subtotal + gst_amount)
 
-    # Invoice-level rate is a summary only.
-    # Individual rates are preserved on InvoiceItem.
+    # 4. Deduct discount from final total
+    discount = money(invoice.discount_amount)
+
+    if discount < 0 or discount > gross_total:
+        raise ValueError(
+            "Discount cannot be negative or exceed the total bill amount"
+        )
+
+    final_total = money(gross_total - discount)
+
+    # 5. Save invoice totals
+    invoice.subtotal = subtotal
+
+    # Taxable amount remains the original pre-GST subtotal.
+    invoice.taxable_amount = subtotal
+
+    invoice.gst_amount = gst_amount
+    invoice.total_amount = final_total
+
+    # Invoice-level GST rate is a summary only.
     gst_rates = {item.gst_rate for item in items}
 
     invoice.gst_rate = (
@@ -182,6 +178,7 @@ def update_invoice_totals(invoice):
     )
 
     invoice.save()
+
 
 
 # COMMON INVOICE RESPONSE
@@ -686,9 +683,11 @@ class InvoiceDetailAPIView(APIView):
                     )
                 )
 
-                if discount < 0 or discount > invoice.subtotal:
+                if discount < 0 or discount > (
+                        invoice.subtotal + invoice.gst_amount
+                ):
                     raise ValueError(
-                        "Discount cannot be negative or exceed subtotal"
+                        "Discount cannot be negative or exceed total bill amount"
                     )
 
                 invoice.discount_amount = discount

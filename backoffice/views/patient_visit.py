@@ -13,8 +13,15 @@ from db.models import (
     PatientVisit,
     PatientPhoto
 )
+
 from shared.utils.custom_response import CustomResponse
 
+
+# =========================================================
+# CONSTANTS
+# =========================================================
+
+CONSULTANT_NAME = "Dr. Mounika"
 
 VISIT_FIELDS = {
     "appointment_id",
@@ -25,10 +32,12 @@ VISIT_FIELDS = {
 
 REQUIRED_FIELDS = {
     "visit_date",
-    "consultant_name",
 }
 
 
+# =========================================================
+# HELPER: FORMAT PATIENT VISIT RESPONSE
+# =========================================================
 
 def patient_visit_data(visit):
 
@@ -58,13 +67,16 @@ def patient_visit_data(visit):
         "id": str(visit.id),
         "patient_id": str(visit.patient_id),
         "patient_name": visit.patient.full_name,
+
         "appointment_id": (
             str(appointment.id) if appointment else None
         ),
+
         "appointment_datetime": (
             appointment.appointment_datetime.isoformat()
             if appointment else None
         ),
+
         "visit_date": visit.visit_date.isoformat(),
         "consultant_name": visit.consultant_name,
         "notes": visit.notes,
@@ -81,6 +93,9 @@ def patient_visit_data(visit):
     }
 
 
+# =========================================================
+# HELPER: VALIDATE PATIENT VISIT DATA
+# =========================================================
 
 def validate_visit_data(data, partial=False):
 
@@ -92,6 +107,7 @@ def validate_visit_data(data, partial=False):
         )
 
     if not partial:
+
         missing_fields = REQUIRED_FIELDS - set(data.keys())
 
         if missing_fields:
@@ -108,7 +124,10 @@ def validate_visit_data(data, partial=False):
 
         value = data[field]
 
+        # -------------------------------------------------
         # VALIDATE APPOINTMENT
+        # -------------------------------------------------
+
         if field == "appointment_id":
 
             if value in ("", None):
@@ -128,7 +147,10 @@ def validate_visit_data(data, partial=False):
 
             values["appointment"] = appointment
 
+        # -------------------------------------------------
         # VALIDATE VISIT DATE
+        # -------------------------------------------------
+
         elif field == "visit_date":
 
             if not isinstance(value, str):
@@ -145,33 +167,25 @@ def validate_visit_data(data, partial=False):
                 )
 
             if timezone.is_naive(visit_date):
-                visit_date = timezone.make_aware(visit_date)
+                visit_date = timezone.make_aware(
+                    visit_date,
+                    timezone.get_current_timezone()
+                )
 
             values["visit_date"] = visit_date
 
-        # VALIDATE CONSULTANT NAME
+        # -------------------------------------------------
+        # CONSULTANT NAME IS STATIC
+        # -------------------------------------------------
+
         elif field == "consultant_name":
 
-            if not isinstance(value, str):
-                raise ValueError(
-                    "consultant_name must be a string."
-                )
+            values["consultant_name"] = CONSULTANT_NAME
 
-            value = value.strip()
-
-            if not value:
-                raise ValueError(
-                    "consultant_name is required."
-                )
-
-            if len(value) > 150:
-                raise ValueError(
-                    "consultant_name cannot exceed 150 characters."
-                )
-
-            values["consultant_name"] = value
-
+        # -------------------------------------------------
         # VALIDATE NOTES
+        # -------------------------------------------------
+
         elif field == "notes":
 
             if value is not None and not isinstance(value, str):
@@ -181,8 +195,15 @@ def validate_visit_data(data, partial=False):
 
             values["notes"] = value.strip() if value else None
 
+    # Always use the static consultant name.
+    values["consultant_name"] = CONSULTANT_NAME
+
     return values
 
+
+# =========================================================
+# HELPER: VALIDATE MODEL
+# =========================================================
 
 def get_visit_model_errors(visit):
 
@@ -194,14 +215,22 @@ def get_visit_model_errors(visit):
         return error.message_dict
 
 
+# =========================================================
+# API 1: PATIENT VISIT LIST AND CREATION
+# =========================================================
+
 class PatientVisitListCreateAPIView(APIView):
 
     permission_classes = [IsAuthenticated]
 
-    # CREATE PATIENT VISIT
+    # -----------------------------------------------------
+    # POST: CREATE PATIENT VISIT
+    # -----------------------------------------------------
+
     def post(self, request, format=None):
 
         try:
+
             patient_id = request.data.get("patient_id")
 
             if not patient_id:
@@ -225,23 +254,39 @@ class PatientVisitListCreateAPIView(APIView):
                     message="Active patient not found."
                 )
 
-            # Remove patient_id because it is handled separately
+            # Remove patient_id because it is handled separately.
             visit_input = request.data.copy()
             visit_input.pop("patient_id", None)
 
             values = validate_visit_data(visit_input)
 
-            # Ensure appointment belongs to the selected patient
+            # -------------------------------------------------
+            # VALIDATE APPOINTMENT AND PREVENT DUPLICATE VISITS
+            # -------------------------------------------------
+
             appointment = values.get("appointment")
 
-            if appointment and appointment.patient_id != patient.id:
-                return CustomResponse.error(
-                    message=(
-                        "The selected appointment does not belong "
-                        "to this patient."
-                    )
-                )
+            if appointment:
 
+                if appointment.patient_id != patient.id:
+                    return CustomResponse.error(
+                        message=(
+                            "The selected appointment does not belong "
+                            "to this patient."
+                        )
+                    )
+
+                if PatientVisit.objects.filter(
+                    appointment=appointment
+                ).exists():
+                    return CustomResponse.error(
+                        message=(
+                            "A patient visit already exists for this "
+                            "appointment. Please update the existing visit."
+                        )
+                    )
+
+            # Create visit.
             visit = PatientVisit(
                 patient=patient,
                 **values,
@@ -265,16 +310,22 @@ class PatientVisitListCreateAPIView(APIView):
             )
 
         except ValueError as error:
+
             return CustomResponse.error(
                 message=str(error)
             )
 
-    # RETRIEVE PATIENT VISITS
+    # -----------------------------------------------------
+    # GET: RETRIEVE PATIENT VISITS
+    # -----------------------------------------------------
+
     def get(self, request, format=None):
 
         queryset = PatientVisit.objects.select_related(
             "patient",
             "appointment"
+        ).prefetch_related(
+            "photos"
         ).all()
 
         # FILTER BY PATIENT
@@ -324,6 +375,7 @@ class PatientVisitListCreateAPIView(APIView):
 
         # PAGINATION
         try:
+
             page = int(request.query_params.get("page", 1))
             size = int(request.query_params.get("size", 20))
 
@@ -334,6 +386,7 @@ class PatientVisitListCreateAPIView(APIView):
                 raise ValueError
 
         except (ValueError, TypeError):
+
             return CustomResponse.error(
                 message=(
                     "Invalid pagination values. Page must be positive "
@@ -368,6 +421,10 @@ class PatientVisitListCreateAPIView(APIView):
         )
 
 
+# =========================================================
+# API 2: PATIENT VISIT RETRIEVAL AND UPDATION
+# =========================================================
+
 class PatientVisitDetailAPIView(APIView):
 
     permission_classes = [IsAuthenticated]
@@ -378,12 +435,17 @@ class PatientVisitDetailAPIView(APIView):
             return PatientVisit.objects.select_related(
                 "patient",
                 "appointment"
+            ).prefetch_related(
+                "photos"
             ).filter(id=visit_id).first()
 
         except (ValueError, DjangoValidationError):
             return None
 
-    # RETRIEVE ONE PATIENT VISIT
+    # -----------------------------------------------------
+    # GET: RETRIEVE ONE PATIENT VISIT
+    # -----------------------------------------------------
+
     def get(self, request, visit_id, format=None):
 
         visit = self.get_visit(visit_id)
@@ -398,7 +460,10 @@ class PatientVisitDetailAPIView(APIView):
             data=patient_visit_data(visit)
         )
 
-    # PARTIALLY UPDATE PATIENT VISIT
+    # -----------------------------------------------------
+    # PATCH: UPDATE PATIENT VISIT
+    # -----------------------------------------------------
+
     def patch(self, request, visit_id, format=None):
 
         visit = self.get_visit(visit_id)
@@ -414,6 +479,7 @@ class PatientVisitDetailAPIView(APIView):
             )
 
         try:
+
             values = validate_visit_data(
                 request.data,
                 partial=True
@@ -424,12 +490,26 @@ class PatientVisitDetailAPIView(APIView):
                 visit.appointment
             )
 
-            # Ensure appointment belongs to the same patient
+            # Ensure appointment belongs to the same patient.
             if appointment and appointment.patient_id != visit.patient_id:
                 return CustomResponse.error(
                     message=(
                         "The selected appointment does not belong "
                         "to this patient."
+                    )
+                )
+
+            # Prevent linking another visit to an appointment
+            # that already has a different visit.
+            if appointment and PatientVisit.objects.filter(
+                appointment=appointment
+            ).exclude(
+                id=visit.id
+            ).exists():
+                return CustomResponse.error(
+                    message=(
+                        "A patient visit already exists for this "
+                        "appointment."
                     )
                 )
 
@@ -454,16 +534,24 @@ class PatientVisitDetailAPIView(APIView):
             )
 
         except ValueError as error:
+
             return CustomResponse.error(
                 message=str(error)
             )
 
 
+# =========================================================
+# API 3: ADD PHOTOS TO PATIENT VISIT
+# =========================================================
+
 class PatientVisitPhotoAPIView(APIView):
 
     permission_classes = [IsAuthenticated]
 
-    # ADD PHOTO TO PATIENT VISIT
+    # -----------------------------------------------------
+    # POST: ADD PHOTO TO PATIENT VISIT
+    # -----------------------------------------------------
+
     def post(self, request, visit_id, format=None):
 
         # FIND PATIENT VISIT
@@ -534,10 +622,12 @@ class PatientVisitPhotoAPIView(APIView):
         )
 
         try:
+
             photo.full_clean()
             photo.save()
 
         except DjangoValidationError as error:
+
             return CustomResponse.error(
                 message="Patient photo validation failed.",
                 errors=error.message_dict
@@ -555,4 +645,3 @@ class PatientVisitPhotoAPIView(APIView):
                 "created_at": photo.created_at.isoformat()
             }
         )
-

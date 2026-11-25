@@ -21,6 +21,9 @@ from rest_framework.permissions import IsAuthenticated
 # Import database models.
 from db.models.appointment import Appointment
 from db.models.patient import Patient
+from django.db import transaction
+from db.models.patient_visit import PatientVisit
+from db.models.patient_photo import PatientPhoto
 
 # Import custom responses.
 from shared.utils.custom_response import CustomResponse
@@ -32,15 +35,57 @@ from shared.utils.custom_response import CustomResponse
 # Converts an Appointment object into a dictionary.
 # Used by create, retrieve and update APIs.
 
+def short_id(value):
+    return str(value)[:8].upper()
+
 def appointment_data(appointment):
+
+    # PatientVisit model ordering is newest visit first.
+    visits = list(appointment.visits.all())
+    visit = visits[0] if visits else None
+
+    visit_data = None
+
+    if visit:
+
+        before_photos = []
+        after_photos = []
+
+        for photo in visit.photos.all():
+
+            photo_data = {
+                "id": str(photo.id),
+                "image_path": photo.image_path,
+                "description": photo.description,
+                "created_at": photo.created_at.isoformat(),
+            }
+
+            if photo.photo_type == PatientPhoto.PhotoType.BEFORE:
+                before_photos.append(photo_data)
+
+            elif photo.photo_type == PatientPhoto.PhotoType.AFTER:
+                after_photos.append(photo_data)
+
+        visit_data = {
+            "id": str(visit.id),
+            "visit_date": visit.visit_date.isoformat(),
+            "consultant_name": visit.consultant_name,
+            "notes": visit.notes,
+            "photos": {
+                "before": before_photos,
+                "after": after_photos,
+            }
+        }
 
     return {
         "id": str(appointment.id),
+        "display_id": short_id(appointment.id),
         "patient_id": str(appointment.patient.id),
         "patient_name": appointment.patient.full_name,
         "appointment_datetime": appointment.appointment_datetime.isoformat(),
         "notes": appointment.notes,
         "status": appointment.status,
+        "visit": visit_data,
         "created_at": appointment.created_at.isoformat(),
         "updated_at": appointment.updated_at.isoformat(),
         "created_by": appointment.created_by,
@@ -288,6 +333,8 @@ class AppointmentListCreateAPIView(APIView):
         # Retrieve appointments along with their patient details.
         appointments = Appointment.objects.select_related(
             "patient"
+        ).prefetch_related(
+            "visits__photos"
         ).all()
 
         current_datetime = timezone.now()
@@ -434,6 +481,8 @@ class AppointmentDetailAPIView(APIView):
         try:
             return Appointment.objects.select_related(
                 "patient"
+            ).prefetch_related(
+                "visits__photos"
             ).get(id=appointment_id)
 
         except (Appointment.DoesNotExist, ValueError, TypeError):
@@ -487,65 +536,114 @@ class AppointmentDetailAPIView(APIView):
 
     def update_appointment(self, request, appointment_id, partial):
 
-        # Find the appointment.
-        appointment = self.get_appointment(appointment_id)
+        with transaction.atomic():
 
-        if appointment is None:
-            return CustomResponse.error(
-                message="Appointment not found."
-            )
+            # Lock the appointment while updating it.
+            try:
+                appointment = Appointment.objects.select_for_update().select_related(
+                    "patient"
+                ).get(id=appointment_id)
 
-        # Validate the update request.
-        validated_data, errors = validate_appointment_data(
-            request.data,
-            operation="update",
-            partial=partial
-        )
-
-        if errors:
-            return CustomResponse.error(
-                message="Validation failed."
-            )
-
-        # Determine the status after applying this update.
-        # This also supports completing an appointment and
-        # adding notes in the same PATCH request.
-        resulting_status = validated_data.get(
-            "status",
-            appointment.status
-        )
-
-        # Notes can only be added or changed after completion.
-        if (
-            "notes" in validated_data
-            and resulting_status != Appointment.Status.COMPLETED
-        ):
-            return CustomResponse.error(
-                message=(
-                    "Consultation or treatment notes can only be "
-                    "added or updated after the appointment is completed."
+            except (
+                    Appointment.DoesNotExist,
+                    ValueError,
+                    TypeError
+            ):
+                return CustomResponse.error(
+                    message="Appointment not found."
                 )
+
+            # Validate the update request.
+            validated_data, errors = validate_appointment_data(
+                request.data,
+                operation="update",
+                partial=partial
             )
 
-        # Apply the validated fields to the appointment.
-        # Patient relationship is intentionally not editable.
-        for field, value in validated_data.items():
-            setattr(appointment, field, value)
+            if errors:
+                return CustomResponse.error(
+                    message="Validation failed."
+                )
 
-        # Record the staff member who updated the appointment.
-        appointment.updated_by = request.user.username
-
-        # Validate the updated model before saving.
-        try:
-            appointment.full_clean()
-
-        except DjangoValidationError as e:
-            return CustomResponse.error(
-                message="Appointment validation failed.",
+            resulting_status = validated_data.get(
+                "status",
+                appointment.status
             )
 
-        # Save changes in the database.
-        appointment.save()
+            # Notes can only be added or changed after completion.
+            if (
+                    "notes" in validated_data
+                    and resulting_status != Appointment.Status.COMPLETED
+            ):
+                return CustomResponse.error(
+                    message=(
+                        "Consultation or treatment notes can only be "
+                        "added or updated after the appointment is completed."
+                    )
+                )
+
+            # Apply appointment changes.
+            for field, value in validated_data.items():
+                setattr(appointment, field, value)
+
+            appointment.updated_by = request.user.username
+
+            try:
+                appointment.full_clean()
+
+            except DjangoValidationError:
+                return CustomResponse.error(
+                    message="Appointment validation failed."
+                )
+
+            appointment.save()
+
+            # -------------------------------------------------
+            # CREATE OR UPDATE PATIENT VISIT WHEN COMPLETED
+            # -------------------------------------------------
+
+            if appointment.status == Appointment.Status.COMPLETED:
+
+                visit = PatientVisit.objects.filter(
+                    appointment=appointment
+                ).order_by("-visit_date").first()
+
+                if visit is None:
+
+                    # Create the visit only once.
+                    visit = PatientVisit(
+                        patient=appointment.patient,
+                        appointment=appointment,
+                        visit_date=appointment.appointment_datetime,
+                        consultant_name="Dr. Mounika",
+                        notes=appointment.notes,
+                        created_by=request.user.username,
+                        updated_by=request.user.username
+                    )
+
+                else:
+
+                    # Keep the existing visit synchronized with
+                    # the completed appointment.
+                    visit.visit_date = appointment.appointment_datetime
+                    visit.consultant_name = "Dr. Mounika"
+                    visit.notes = appointment.notes
+                    visit.updated_by = request.user.username
+
+                try:
+                    visit.full_clean()
+                    visit.save()
+
+                except DjangoValidationError as error:
+                    transaction.set_rollback(True)
+
+                    return CustomResponse.error(
+                        message="Patient visit validation failed.",
+                        errors=error.message_dict
+                    )
+
+        # Return the appointment including its associated visit and photos.
+        appointment.refresh_from_db()
 
         return CustomResponse.success(
             message="Appointment updated successfully.",
@@ -580,6 +678,8 @@ class PatientNextAppointmentAPIView(APIView):
         # Find the nearest future scheduled appointment.
         next_appointment = Appointment.objects.select_related(
             "patient"
+        ).prefetch_related(
+            "visits__photos"
         ).filter(
             patient=patient,
             status=Appointment.Status.SCHEDULED,

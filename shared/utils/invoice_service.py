@@ -72,6 +72,35 @@ def get_patient_name(patient):
     )
 
 
+def get_patient_age(patient):
+    dob = getattr(patient, "date_of_birth", None)
+
+    if not dob:
+        return "—"
+
+    today = timezone.localdate()
+
+    age = today.year - dob.year
+
+    if (today.month, today.day) < (dob.month, dob.day):
+        age -= 1
+
+    if age < 0:
+        return "—"
+
+    return f"{age} Years"
+
+def get_consultant_name(invoice):
+    if not invoice.patient_visit_id:
+        return "—"
+
+    return (
+        getattr(invoice.patient_visit, "consultant_name", None)
+        or "—"
+    )
+
+
+
 def generate_invoice_pdf(invoice_id):
 
     try:
@@ -143,10 +172,22 @@ def generate_invoice_pdf(invoice_id):
 
             # Patient details
             "patient_name": get_patient_name(invoice.patient),
+
             "patient_mobile": (
-                getattr(invoice.patient, "mobile", None)
-                or "N/A"
+                    getattr(invoice.patient, "mobile", None)
+                    or "N/A"
             ),
+
+            "patient_age": get_patient_age(invoice.patient),
+
+            "patient_gender": (
+                invoice.patient.get_gender_display()
+                if hasattr(invoice.patient, "get_gender_display")
+                else getattr(invoice.patient, "gender", None) or "N/A"
+            ),
+
+            #"consultant_name": get_consultant_name(invoice),
+            "consultant_name": "Dr.Mounika",
 
             # Items
             "items": invoice_items,

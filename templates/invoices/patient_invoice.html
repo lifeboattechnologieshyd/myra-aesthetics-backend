@@ -1,6 +1,6 @@
-
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Invoice {{ invoice_number }}</title>
@@ -8,7 +8,7 @@
     <style>
         @page {
             size: A4;
-            margin: 5mm;
+            margin: 12mm 15mm;
         }
 
         * {
@@ -19,176 +19,215 @@
             margin: 0;
             padding: 0;
             background: #ffffff;
-            color: #222222;
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 13px;
+            color: #1b1b1b;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
         }
 
         .invoice {
             width: 100%;
-            min-height: 0;
+            max-width: 800px;
             margin: 0 auto;
-            padding: 12px;
+            padding: 12px 16px;
             background: #ffffff;
         }
 
-        /* Header */
-
+        /* Clinic Header */
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding-bottom: 10px;
-            border-bottom: 3px solid #dca000;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #dfa32b;
         }
 
         .clinic-section {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 14px;
         }
 
         .logo {
-            width: 65px;
-            height: 65px;
-            min-width: 65px;
-            border: 2px solid #dca000;
+            width: 68px;
+            height: 68px;
+            min-width: 68px;
+            border: 2.5px solid #dfa32b;
             border-radius: 50%;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            font-size: 14px;
-            font-weight: 700;
+            font-size: 11px;
+            font-weight: 800;
             color: #1b1b1b;
+            background: #ffffff;
+            text-align: center;
+            padding: 4px;
         }
 
         .logo img {
-            max-width: 58px;
-            max-height: 58px;
+            max-width: 60px;
+            max-height: 60px;
             object-fit: contain;
         }
 
         .clinic-name {
             margin: 0;
-            font-size: 26px;
+            font-size: 22px;
             font-weight: 800;
+            letter-spacing: 0.5px;
+            color: #111827;
         }
 
         .tagline {
-            margin: 3px 0;
-            color: #555555;
-            font-size: 14px;
-            letter-spacing: 2px;
+            margin: 2px 0 4px;
+            color: #dfa32b;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
         }
 
         .clinic-details {
-            margin: 4px 0 0;
-            font-size: 13px;
+            margin: 0;
+            font-size: 12px;
+            color: #374151;
             line-height: 1.4;
         }
 
         .bill-title {
-            padding-left: 8px;
-            border-left: 2px solid #999999;
+            padding-left: 16px;
+            border-left: 2px solid #cbd5e1;
             text-align: left;
         }
 
         .bill-title h1 {
-            margin: 0 0 5px;
-            font-size: 18px;
+            margin: 0 0 4px;
+            font-size: 20px;
             font-weight: 800;
+            white-space: nowrap;
         }
 
         .bill-title p {
             margin: 0;
             font-size: 13px;
-            overflow-wrap: anywhere;
+            font-weight: 600;
+            color: #4b5563;
+            white-space: nowrap;
         }
 
-        /* Invoice Date */
-
-        .bill-date {
+        /* Invoice Date & Time Banner */
+        .bill-date-banner {
             display: flex;
+            align-items: center;
             justify-content: center;
-            gap: 30px;
-            margin: 14px 0;
+            gap: 32px;
+            margin: 12px 0 14px;
+            padding: 6px 16px;
             font-size: 12px;
             font-weight: 600;
+            color: #374151;
+            border-bottom: 1px solid #f1f5f9;
         }
 
-        /* Section Heading */
+        .bill-date-banner span {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
 
-        .section-title {
+        /* Section Headings - Attached Directly to Table/Box */
+        .section-badge {
             display: inline-block;
             margin: 0;
-            padding: 6px 14px;
-            border-radius: 7px 7px 7px 0;
-            background: linear-gradient(
-                90deg,
-                #f0bf46,
-                #fff0c5
-            );
-            font-size: 14px;
+            padding: 5px 16px;
+            border-radius: 6px 6px 0 0;
+            background: linear-gradient(90deg, #f0c353, #fdf0cd);
+            font-size: 11px;
             font-weight: 800;
+            letter-spacing: 0.5px;
+            color: #262626;
+            text-transform: uppercase;
+            border: 1px solid #cbd5e1;
+            border-bottom: none;
+            position: relative;
+            bottom: -1px;
+            z-index: 2;
         }
 
-        /* Patient Information */
-
-        .patient-box,
-        .summary-box {
-            border: 1px solid #a5a5a5;
-            border-radius: 7px;
-        }
-
+        /* Patient Information Box */
         .patient-box {
+            border: 1px solid #cbd5e1;
+            border-radius: 0 8px 8px 8px;
+            padding: 10px 14px;
             margin-bottom: 14px;
-            padding: 12px;
+            background: #ffffff;
+            position: relative;
+            z-index: 1;
         }
 
-        .patient-row {
+        .patient-grid {
             display: grid;
-            grid-template-columns: 100px 1fr 65px 1fr;
-            gap: 8px;
-            margin-bottom: 7px;
-            font-size: 13px;
+            grid-template-columns: 1fr 1fr;
+            column-gap: 24px;
+            row-gap: 6px;
+        }
+
+        .patient-field {
+            display: grid;
+            grid-template-columns: 100px 14px 1fr;
             align-items: center;
+            font-size: 12px;
         }
 
-        .patient-row:last-child {
-            margin-bottom: 0;
-        }
-
-        .label {
+        .patient-field .label {
             font-weight: 700;
+            color: #1f2937;
+        }
+
+        .patient-field .colon {
+            font-weight: 700;
+            color: #4b5563;
+        }
+
+        .patient-field .val {
+            color: #374151;
+            font-weight: 500;
         }
 
         /* Items Table */
-
         table {
             width: 100%;
             border-collapse: collapse;
         }
 
         .items-table {
-            margin: 6px 0 12px;
-            border: 1px solid #a5a5a5;
-            border-radius: 7px;
+            margin: 8px 0 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
             overflow: hidden;
         }
 
         .items-table th {
-            padding: 9px;
-            background: #fff0c5;
-            border: 1px solid #c5c5c5;
-            font-size: 13px;
+            padding: 8px 10px;
+            background: #faeac4;
+            border: 1px solid #d1d5db;
+            font-size: 12px;
             font-weight: 700;
+            color: #1f2937;
         }
 
         .items-table td {
-            padding: 9px;
-            border: 1px solid #c5c5c5;
+            padding: 8px 10px;
+            border: 1px solid #e5e7eb;
             font-size: 12px;
+            color: #1f2937;
+        }
+
+        .items-table tr:nth-child(even) {
+            background-color: #fafaf9;
         }
 
         .items-table tr {
@@ -204,83 +243,138 @@
         }
 
         /* Bill Summary */
-
-        .bill-summary {
-            margin-top: 12px;
+        .payment-summary-row {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+            margin-top: 10px;
             page-break-inside: avoid;
         }
 
         .summary-box {
+            border: 1px solid #cbd5e1;
+            border-radius: 8px 8px 8px 8px;
             overflow: hidden;
+            background: #ffffff;
+            position: relative;
+            z-index: 1;
+            float: right;
+            width: 50%;
         }
 
-        .summary-box td {
-            padding: 8px 10px;
-            border: 1px solid #c5c5c5;
+        .summary-table td {
+            padding: 6px 12px;
+            border: 1px solid #e5e7eb;
             font-size: 12px;
         }
 
-        .summary-box td:first-child {
+        .summary-table td:first-child {
             font-weight: 700;
+            color: #374151;
         }
 
-        .total-row td {
-            background: #ffe6a4;
-            font-size: 14px;
+        .summary-table .total-row td {
+            background: #faeac4;
+            font-size: 13px;
             font-weight: 800;
+            color: #111827;
+            border-top: 1.5px solid #dfa32b;
+            border-bottom: 1.5px solid #dfa32b;
         }
 
         /* Amount in Words */
-
         .words-box {
             margin-top: 14px;
-            padding: 12px 14px;
+            padding: 10px 14px;
             border-radius: 6px;
-            background: #f1f1f1;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
             font-size: 12px;
-            line-height: 1.5;
+            color: #334155;
+            page-break-inside: avoid;
+        }
+
+        .words-box strong {
+            color: #1e293b;
+        }
+
+        .words-box em {
+            font-style: italic;
+            font-weight: 600;
+            color: #0f172a;
         }
 
         /* Signatures */
-
         .signatures {
             display: flex;
             justify-content: space-between;
-            gap: 30px;
-            margin-top: 30px;
-            padding: 0 25px;
+            gap: 40px;
+            margin-top: 36px;
+            padding: 0 30px;
+            page-break-inside: avoid;
         }
 
         .signature {
             width: 200px;
-            padding-top: 5px;
-            border-top: 1px solid #222222;
+            padding-top: 6px;
+            border-top: 1px solid #334155;
             text-align: center;
             font-size: 12px;
+            font-weight: 600;
+            color: #334155;
         }
 
         /* Footer */
-
         .footer {
-            margin-top: 18px;
+            margin-top: 22px;
             text-align: center;
-            font-size: 12px;
+            font-size: 11px;
+            color: #64748b;
+            page-break-inside: avoid;
         }
 
         .footer p {
-            margin: 5px 0;
+            margin: 4px 0;
         }
 
-        .thank-you {
-            color: #222222;
-            font-size: 16px;
+        .retain-notice {
             font-style: italic;
-            font-weight: 700;
+            color: #475569;
         }
 
-        /* Print Settings */
+        .thank-you-line {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin: 8px 0 4px;
+        }
 
+        .thank-you-line::before,
+        .thank-you-line::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: #dfa32b;
+            max-width: 140px;
+        }
+
+        .thank-you-text {
+            font-size: 14px;
+            font-weight: 800;
+            font-style: italic;
+            color: #1e293b;
+        }
+
+        .disclaimer {
+            font-size: 10px;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+
+        /* Print Specific Adjustments */
         @media print {
+
             html,
             body {
                 width: 100%;
@@ -291,15 +385,16 @@
 
             .invoice {
                 width: 100%;
-                min-height: 0;
+                max-width: 100%;
                 margin: 0;
-                padding: 12px;
+                padding: 12px 15px;
             }
 
             .header,
+            .bill-date-banner,
             .patient-box,
             .items-table,
-            .bill-summary,
+            .payment-summary-row,
             .words-box,
             .signatures,
             .footer {
@@ -326,240 +421,180 @@
     <main class="invoice">
 
         <!-- Clinic Header -->
-
         <header class="header">
-
             <section class="clinic-section">
-
                 <div class="logo">
                     {% if clinic_logo_url %}
-                        <img
-                            src="{{ clinic_logo_url }}"
-                            alt="{{ clinic_name }}"
-                        >
+                    <img src="{{ clinic_logo_url }}" alt="{{ clinic_name|default:'MYRAA' }}">
                     {% else %}
-                        MYRAA
+                    <span>MYRAA</span>
                     {% endif %}
                 </div>
 
                 <div>
-                    <h2 class="clinic-name">
-                        {{ clinic_name }}
-                    </h2>
-
-                    <p class="tagline">
-                        {{ clinic_tagline }}
-                    </p>
-
+                    <h2 class="clinic-name">{{ clinic_name|default:"MYRAA AESTHETICS" }}</h2>
+                    <p class="tagline">{{ clinic_tagline|default:"SKIN • HAIR • LASER" }}</p>
                     <p class="clinic-details">
-                        {{ clinic_address }}<br>
-                        Contact: {{ clinic_contact }}
+                        {% if clinic_address %}
+                            {{ clinic_address }}
+                        {% else %}
+                            1st Floor, Kapil Kakatiya Towers, Beside Barbeque Nation,
+                            Nakkalagutta, Hanamkonda
+                        {% endif %}
+                        <br>
+                        Contact: {{ clinic_contact|default:"+91 91000 00000" }}
                     </p>
                 </div>
-
             </section>
 
             <section class="bill-title">
                 <h1>PATIENT BILL</h1>
-                <p>Bill No: {{ invoice_number }}</p>
+                <p>Bill No: MYR-{{ invoice_number|slice:"-8:" }}</p>
             </section>
-
         </header>
 
-        <!-- Invoice Date and Time -->
-
-        <section class="bill-date">
+        <!-- Bill Date and Time Banner -->
+        <section class="bill-date-banner">
             <span>
-                Bill Date: {{ invoice_date }}
+                🗓️ Bill Date: <strong>{{ invoice_date|default:"" }}</strong>
             </span>
-
+            <span>|</span>
             <span>
-                Time: {{ invoice_time }}
+                🕒 Time: <strong>{{ invoice_time|default:"" }}</strong>
             </span>
         </section>
 
-        <!-- Patient Information -->
+        <!-- Patient Information Section -->
+        <div>
+            <h3 class="section-badge">PATIENT INFORMATION</h3>
 
-        <h3 class="section-title">
-            PATIENT INFORMATION
-        </h3>
+            <section class="patient-box">
+                <div class="patient-grid">
 
-        <section class="patient-box">
+                    <div class="patient-field">
+                        <span class="label">Patient Name</span>
+                        <span class="colon">:</span>
+                        <span class="val">{{ patient_name|default:"-" }}</span>
+                    </div>
 
-            <div class="patient-row">
+                    <div class="patient-field">
+                        <span class="label">Mobile</span>
+                        <span class="colon">:</span>
+                        <span class="val">{{ patient_mobile|default:"-" }}</span>
+                    </div>
 
-                <span class="label">
-                    Patient Name
-                </span>
+                    <div class="patient-field">
+                        <span class="label">Age</span>
+                        <span class="colon">:</span>
+                        <span class="val">{{ patient_age|default:"-" }}</span>
+                    </div>
 
-                <span>
-                    {{ patient_name }}
-                </span>
+                    <div class="patient-field">
+                        <span class="label">Consultant</span>
+                        <span class="colon">:</span>
+                        <span class="val">{{ consultant_name|default:"-" }}</span>
+                    </div>
 
-                <span class="label">
-                    Mobile
-                </span>
+                    <div class="patient-field">
+                        <span class="label">Gender</span>
+                        <span class="colon">:</span>
+                        <span class="val">{{ patient_gender|default:"-" }}</span>
+                    </div>
 
-                <span>
-                    {{ patient_mobile }}
-                </span>
-
-            </div>
-
-        </section>
+                </div>
+            </section>
+        </div>
 
         <!-- Invoice Items -->
-
         <section class="items-table">
-
             <table>
-
                 <thead>
                     <tr>
                         <th style="width: 8%;">S.No</th>
-                        <th style="width: 42%;">Treatment / Service</th>
+                        <th style="width: 44%;">Treatment / Service</th>
                         <th style="width: 12%;">Qty</th>
                         <th style="width: 18%;">Rate (₹)</th>
-                        <th style="width: 20%;">Amount (₹)</th>
+                        <th style="width: 18%;">Amount (₹)</th>
                     </tr>
                 </thead>
 
                 <tbody>
-
                     {% for item in items %}
-
                     <tr>
-                        <td class="center">
-                            {{ forloop.counter }}
-                        </td>
-
-                        <td>
-                            {{ item.item_name }}
-                        </td>
-
-                        <td class="center">
-                            {{ item.quantity }}
-                        </td>
-
-                        <td class="right">
-                            {{ item.unit_price|floatformat:2 }}
-                        </td>
-
-                        <td class="right">
-                            {{ item.total_price|floatformat:2 }}
-                        </td>
+                        <td class="center">{{ forloop.counter }}</td>
+                        <td>{{ item.item_name }}</td>
+                        <td class="center">{{ item.quantity }}</td>
+                        <td class="right">{{ item.unit_price|floatformat:2 }}</td>
+                        <td class="right">{{ item.total_price|floatformat:2 }}</td>
                     </tr>
-
                     {% empty %}
-
                     <tr>
-                        <td colspan="5" class="center">
-                            No invoice items found.
+                        <td colspan="5" class="center" style="padding: 16px; color: #6b7280;">
+                            No invoice line items found.
                         </td>
                     </tr>
-
                     {% endfor %}
-
                 </tbody>
-
             </table>
-
         </section>
 
-        <!-- Amount Summary -->
+        <!-- Bill Summary -->
+        <section class="payment-summary-row">
+            <div>
+                <div class="summary-box">
+                    <table class="summary-table">
+                        <tr>
+                            <td>Subtotal</td>
+                            <td class="right">₹{{ subtotal|floatformat:2 }}</td>
+                        </tr>
 
+                        <tr>
+                            <td>Tax{% if gst_rate %} ({{ gst_rate }}%){% endif %}</td>
+                            <td class="right">₹{{ gst_amount|floatformat:2 }}</td>
+                        </tr>
 
-<!-- Amount Summary -->
+                        {% if discount_amount and discount_amount > 0 %}
+                        <tr>
+                            <td>Discount</td>
+                            <td class="right">₹{{ discount_amount|floatformat:2 }}</td>
+                        </tr>
+                        {% endif %}
 
-<section class="bill-summary">
-
-    <h3 class="section-title">
-        BILL SUMMARY
-    </h3>
-
-    <section class="summary-box">
-
-        <table>
-
-            <tr>
-                <td>Subtotal</td>
-                <td class="right">
-                    ₹{{ subtotal|floatformat:2 }}
-                </td>
-            </tr>
-
-            <tr>
-                <td>Discount</td>
-                <td class="right">
-                    ₹{{ discount_amount|floatformat:2 }}
-                </td>
-            </tr>
-
-            <tr>
-                <td>
-                    Tax{% if gst_rate %} ({{ gst_rate }}%){% endif %}
-                </td>
-                <td class="right">
-                    ₹{{ gst_amount|floatformat:2 }}
-                </td>
-            </tr>
-
-            <tr class="total-row">
-                <td>TOTAL AMOUNT</td>
-                <td class="right">
-                    ₹{{ total_amount|floatformat:2 }}
-                </td>
-            </tr>
-
-        </table>
-
-    </section>
-
-</section>
-
+                        <tr class="total-row">
+                            <td>TOTAL AMOUNT</td>
+                            <td class="right">₹{{ total_amount|floatformat:2 }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </section>
 
         <!-- Amount in Words -->
-
         <section class="words-box">
-
             <strong>Amount in words:</strong>
-
-            <em>
-                {{ amount_in_words }}
-            </em>
-
+            <em>{{ amount_in_words|default:"-" }}</em>
         </section>
 
         <!-- Signatures -->
-
         <section class="signatures">
-
-            <div class="signature">
-                Patient Signature
-            </div>
-
-            <div class="signature">
-                Authorised Signatory
-            </div>
-
+            <div class="signature">Patient Signature</div>
+            <div class="signature">Authorised Signatory</div>
         </section>
 
         <!-- Footer -->
-
         <footer class="footer">
+            <p class="retain-notice">Please retain this bill for your records.</p>
 
-            <p>
-                <em>
-                    Please retain this bill for your records.
-                </em>
-            </p>
+            <div class="thank-you-line">
+                <span class="thank-you-text">
+                    Thank you for choosing {{ clinic_name|default:"MYRAA Aesthetics" }}.
+                </span>
+            </div>
 
-            <p class="thank-you">
-                Thank you for choosing {{ clinic_name }}.
-            </p>
-
+            <p class="disclaimer">Computer-generated invoice</p>
         </footer>
 
     </main>
 </body>
+
 </html>

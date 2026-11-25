@@ -7,69 +7,97 @@ from django.core.paginator import Paginator, EmptyPage
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 
-# Import custom responses
 from shared.utils.custom_response import CustomResponse
 
 from db.models import Service
 
 
+# =========================================================
+# CONSTANTS
+# =========================================================
+
+FIXED_SERVICE_TYPE = Service.ServiceType.TREATMENT
+
+
+# =========================================================
+# API 1: SERVICE LIST AND CREATION
+# =========================================================
+
 class ServiceListCreateAPIView(APIView):
 
     permission_classes = [IsAuthenticated]
 
-    # CREATE SERVICE
+    # -----------------------------------------------------
+    # POST: CREATE SERVICE
+    # -----------------------------------------------------
+
     def post(self, request, format=None):
 
-        required_fields = ["service_name", "service_type", "price"]
+        required_fields = ["service_name", "price"]
 
         for field in required_fields:
+
             if field not in request.data:
                 return CustomResponse.error(
                     message=f"{field} is required"
                 )
 
         service_name = request.data.get("service_name")
-        service_type = request.data.get("service_type")
-
         description = request.data.get("description")
         is_active = request.data.get("is_active", True)
 
+        # SERVICE TYPE IS FIXED AS TREATMENT
+        supplied_type = request.data.get("service_type")
+
+        if (
+            supplied_type is not None
+            and supplied_type != FIXED_SERVICE_TYPE
+        ):
+            return CustomResponse.error(
+                message="Service type is fixed as TREATMENT."
+            )
+
+        # VALIDATE SERVICE NAME
         if not isinstance(service_name, str) or not service_name.strip():
+
             return CustomResponse.error(
                 message="Service name cannot be empty"
             )
 
-        if service_type not in Service.ServiceType.values:
-            return CustomResponse.error(
-                message="Invalid service_type"
-            )
-
+        # VALIDATE DESCRIPTION
         if description is not None and not isinstance(description, str):
+
             return CustomResponse.error(
                 message="Description must be a string or null"
             )
 
+        # VALIDATE ACTIVE STATUS
         if not isinstance(is_active, bool):
+
             return CustomResponse.error(
                 message="is_active must be true or false"
             )
 
+        # VALIDATE PRICE
         try:
             price = Decimal(str(request.data.get("price")))
 
         except (ValueError, TypeError, InvalidOperation):
+
             return CustomResponse.error(
                 message="Invalid price"
             )
 
         if not price.is_finite() or price < 0:
+
             return CustomResponse.error(
                 message="Price cannot be negative or invalid"
             )
 
+        # CREATE SERVICE
         service = Service(
             service_name=service_name.strip(),
-            service_type=service_type,
+            service_type=FIXED_SERVICE_TYPE,
             description=description,
             price=price,
             is_active=is_active,
@@ -79,7 +107,9 @@ class ServiceListCreateAPIView(APIView):
 
         try:
             service.full_clean()
+
         except ValidationError:
+
             return CustomResponse.error(
                 message="Service validation failed."
             )
@@ -91,14 +121,17 @@ class ServiceListCreateAPIView(APIView):
             data=self.service_data(service)
         )
 
+    # -----------------------------------------------------
     # COMMON SERVICE RESPONSE
+    # -----------------------------------------------------
+
     @staticmethod
     def service_data(service):
 
         return {
             "id": str(service.id),
             "service_name": service.service_name,
-            "service_type": service.service_type,
+            "service_type": FIXED_SERVICE_TYPE,
             "description": service.description,
             "price": str(service.price),
             "is_active": service.is_active,
@@ -106,7 +139,11 @@ class ServiceListCreateAPIView(APIView):
             "updated_at": service.updated_at
         }
 
-    # RETRIEVE SERVICES WITH SEARCH, FILTERS AND PAGINATION
+    # -----------------------------------------------------
+    # GET: RETRIEVE SERVICES WITH SEARCH, FILTERS
+    # AND PAGINATION
+    # -----------------------------------------------------
+
     def get(self, request, format=None):
 
         services = Service.objects.all().order_by("service_name")
@@ -120,17 +157,19 @@ class ServiceListCreateAPIView(APIView):
             )
 
         # SERVICE TYPE FILTER
+        # Only TREATMENT is supported.
         service_type = request.query_params.get("service_type")
 
         if service_type is not None:
 
-            if service_type not in Service.ServiceType.values:
+            if service_type != FIXED_SERVICE_TYPE:
+
                 return CustomResponse.error(
-                    message="Invalid service_type"
+                    message="Only TREATMENT service type is supported."
                 )
 
             services = services.filter(
-                service_type=service_type
+                service_type=FIXED_SERVICE_TYPE
             )
 
         # ACTIVE STATUS FILTER
@@ -139,6 +178,7 @@ class ServiceListCreateAPIView(APIView):
         if is_active is not None:
 
             if is_active.lower() not in ["true", "false"]:
+
                 return CustomResponse.error(
                     message="is_active must be true or false"
                 )
@@ -152,6 +192,7 @@ class ServiceListCreateAPIView(APIView):
         max_price = request.query_params.get("max_price")
 
         try:
+
             if min_price is not None:
                 min_price = Decimal(min_price)
 
@@ -167,6 +208,7 @@ class ServiceListCreateAPIView(APIView):
                     not max_price.is_finite() or max_price < 0
                 ))
             ):
+
                 return CustomResponse.error(
                     message="Price filters cannot be negative or invalid"
                 )
@@ -176,23 +218,30 @@ class ServiceListCreateAPIView(APIView):
                 and max_price is not None
                 and min_price > max_price
             ):
+
                 return CustomResponse.error(
                     message="min_price cannot exceed max_price"
                 )
 
             if min_price is not None:
-                services = services.filter(price__gte=min_price)
+                services = services.filter(
+                    price__gte=min_price
+                )
 
             if max_price is not None:
-                services = services.filter(price__lte=max_price)
+                services = services.filter(
+                    price__lte=max_price
+                )
 
         except (InvalidOperation, ValueError, TypeError):
+
             return CustomResponse.error(
                 message="Invalid price filter"
             )
 
         # PAGINATION
         try:
+
             page = int(request.query_params.get("page", 1))
             size = int(request.query_params.get("size", 20))
 
@@ -200,8 +249,12 @@ class ServiceListCreateAPIView(APIView):
                 raise ValueError
 
         except (ValueError, TypeError):
+
             return CustomResponse.error(
-                message="Invalid page or size. Size must be between 1 and 100"
+                message=(
+                    "Invalid page or size. "
+                    "Size must be between 1 and 100"
+                )
             )
 
         paginator = Paginator(services, size)
@@ -210,6 +263,7 @@ class ServiceListCreateAPIView(APIView):
             page_obj = paginator.page(page)
 
         except EmptyPage:
+
             return CustomResponse.error(
                 message="Requested page does not exist"
             )
@@ -231,16 +285,26 @@ class ServiceListCreateAPIView(APIView):
         )
 
 
+# =========================================================
+# API 2: SERVICE RETRIEVAL, UPDATE AND DEACTIVATION
+# =========================================================
+
 class ServiceDetailAPIView(APIView):
 
     permission_classes = [IsAuthenticated]
 
-    # GET SERVICE BY ID
+    # -----------------------------------------------------
+    # GET: RETRIEVE SERVICE BY ID
+    # -----------------------------------------------------
+
     def get(self, request, service_id, format=None):
 
-        service = Service.objects.filter(id=service_id).first()
+        service = Service.objects.filter(
+            id=service_id
+        ).first()
 
         if not service:
+
             return CustomResponse.error(
                 message="Service not found"
             )
@@ -250,52 +314,64 @@ class ServiceDetailAPIView(APIView):
             data=ServiceListCreateAPIView.service_data(service)
         )
 
-    # UPDATE SELECTED FIELDS
+    # -----------------------------------------------------
+    # PATCH: UPDATE SELECTED FIELDS
+    # -----------------------------------------------------
+
     def patch(self, request, service_id, format=None):
 
-        service = Service.objects.filter(id=service_id).first()
+        service = Service.objects.filter(
+            id=service_id
+        ).first()
 
         if not service:
+
             return CustomResponse.error(
                 message="Service not found"
             )
 
+        # SERVICE TYPE CANNOT BE CHANGED.
         allowed_fields = {
             "service_name",
-            "service_type",
             "description",
             "price",
             "is_active"
         }
 
         if not request.data:
+
             return CustomResponse.error(
                 message="No update data provided"
             )
 
-        if set(request.data.keys()) - allowed_fields:
+        unknown_fields = set(request.data.keys()) - allowed_fields
+
+        if unknown_fields:
+
+            if "service_type" in unknown_fields:
+
+                return CustomResponse.error(
+                    message="Service type is fixed as TREATMENT and cannot be changed."
+                )
+
             return CustomResponse.error(
                 message="Invalid fields provided"
             )
 
         for field, value in request.data.items():
 
+            # VALIDATE SERVICE NAME
             if field == "service_name":
 
                 if not isinstance(value, str) or not value.strip():
+
                     return CustomResponse.error(
                         message="Service name cannot be empty"
                     )
 
                 value = value.strip()
 
-            elif field == "service_type":
-
-                if value not in Service.ServiceType.values:
-                    return CustomResponse.error(
-                        message="Invalid service_type"
-                    )
-
+            # VALIDATE PRICE
             elif field == "price":
 
                 try:
@@ -305,25 +381,33 @@ class ServiceDetailAPIView(APIView):
                         raise ValueError
 
                 except (ValueError, TypeError, InvalidOperation):
+
                     return CustomResponse.error(
                         message="Invalid price"
                     )
 
+            # VALIDATE ACTIVE STATUS
             elif field == "is_active":
 
                 if not isinstance(value, bool):
+
                     return CustomResponse.error(
                         message="is_active must be true or false"
                     )
 
+            # VALIDATE DESCRIPTION
             elif field == "description":
 
                 if value is not None and not isinstance(value, str):
+
                     return CustomResponse.error(
                         message="Description must be a string or null"
                     )
 
             setattr(service, field, value)
+
+        # ENSURE SERVICE TYPE REMAINS TREATMENT
+        service.service_type = FIXED_SERVICE_TYPE
 
         service.updated_by = request.user.username
 
@@ -331,6 +415,7 @@ class ServiceDetailAPIView(APIView):
             service.full_clean()
 
         except ValidationError:
+
             return CustomResponse.error(
                 message="Service validation failed."
             )
@@ -342,17 +427,24 @@ class ServiceDetailAPIView(APIView):
             data=ServiceListCreateAPIView.service_data(service)
         )
 
-    # SOFT DELETE SERVICE
+    # -----------------------------------------------------
+    # DELETE: SOFT DELETE SERVICE
+    # -----------------------------------------------------
+
     def delete(self, request, service_id, format=None):
 
-        service = Service.objects.filter(id=service_id).first()
+        service = Service.objects.filter(
+            id=service_id
+        ).first()
 
         if not service:
+
             return CustomResponse.error(
                 message="Service not found"
             )
 
         if not service.is_active:
+
             return CustomResponse.error(
                 message="Service is already inactive"
             )
