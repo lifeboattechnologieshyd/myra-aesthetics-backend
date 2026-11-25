@@ -45,12 +45,13 @@ from backoffice.views.reports import (
 from backoffice.views.patient_visit import (
     PatientVisitListCreateAPIView,
     PatientVisitDetailAPIView,
+    PatientVisitPhotoAPIView,
+    PatientPhotoDeleteAPIView
 )
 
 from backoffice.views.patient_history import PatientHistoryAPIView
 
 from backoffice.views.invoice_pdf import InvoicePDFAPIView
-from backoffice.views.patient_visit import PatientVisitPhotoAPIView
 
 from backoffice.views.contact_enquiry import (
     ContactEnquiryListAPIView,
@@ -107,4 +108,6 @@ urlpatterns = [
 # Contact enquiry URLs
     path("contact-enquiries/",ContactEnquiryListAPIView.as_view()),
     path("contact-enquiries/<uuid:enquiry_id>/",ContactEnquiryDetailAPIView.as_view()),
+
+    path("patient-photos/<uuid:photo_id>/",PatientPhotoDeleteAPIView.as_view()),
 ]

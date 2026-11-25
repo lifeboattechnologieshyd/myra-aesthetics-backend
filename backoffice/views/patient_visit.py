@@ -667,3 +667,46 @@ class PatientVisitPhotoAPIView(APIView):
                 "created_at": photo.created_at.isoformat()
             }
         )
+
+
+# =========================================================
+# API 4: DELETE PATIENT PHOTO
+# =========================================================
+
+class PatientPhotoDeleteAPIView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    # -----------------------------------------------------
+    # DELETE: REMOVE ONE PATIENT PHOTO
+    # -----------------------------------------------------
+
+    def delete(self, request, photo_id, format=None):
+
+        try:
+            photo = PatientPhoto.objects.filter(
+                id=photo_id
+            ).first()
+
+        except (ValueError, TypeError, DjangoValidationError):
+            return CustomResponse.error(
+                message="Invalid photo_id."
+            )
+
+        if photo is None:
+            return CustomResponse.error(
+                message="Patient photo not found."
+            )
+
+        deleted_photo_id = str(photo.id)
+
+        # Permanently delete the database record.
+        photo.delete()
+
+        return CustomResponse.success(
+            message="Patient photo deleted successfully.",
+            data={
+                "id": deleted_photo_id
+            }
+        )
+
