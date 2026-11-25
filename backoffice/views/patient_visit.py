@@ -53,6 +53,7 @@ def patient_visit_data(visit):
         photo_data = {
             "id": str(photo.id),
             "image_path": photo.image_path,
+            "photo_type": photo.photo_type,
             "description": photo.description,
             "created_at": photo.created_at.isoformat(),
         }
@@ -609,6 +610,27 @@ class PatientVisitPhotoAPIView(APIView):
 
         if description is not None:
             description = description.strip() or None
+
+        existing_photo = PatientPhoto.objects.filter(
+            patient=visit.patient,
+            visit=visit,
+            image_path=image_path,
+            photo_type=photo_type
+        ).first()
+
+        if existing_photo:
+            return CustomResponse.success(
+                message="This photo is already added to the patient visit.",
+                data={
+                    "photo_id": str(existing_photo.id),
+                    "patient_id": str(existing_photo.patient_id),
+                    "visit_id": str(existing_photo.visit_id),
+                    "photo_type": existing_photo.photo_type,
+                    "image_path": existing_photo.image_path,
+                    "description": existing_photo.description,
+                    "created_at": existing_photo.created_at.isoformat()
+                }
+            )
 
         # CREATE PATIENT PHOTO
         photo = PatientPhoto(
