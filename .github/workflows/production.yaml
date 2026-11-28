@@ -1,0 +1,70 @@
+name: Deploy Myra Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-myra-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Add SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PRODUCTION_EC2_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Add known hosts
+        run: |
+          ssh-keyscan -H "${{ secrets.PRODUCTION_EC2_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy to Production EC2
+        run: |
+          ssh -i ~/.ssh/id_rsa \
+            ${{ secrets.PRODUCTION_EC2_USER }}@${{ secrets.PRODUCTION_EC2_HOST }} << 'EOF'
+
+          set -e
+
+          cd /home/ubuntu/myra-aesthetics-backend
+
+          git fetch origin main
+          git checkout main
+          git pull --ff-only origin main
+
+          docker compose \
+            -p myra \
+            -f deploy/compose/docker-compose.prod.yaml \
+            --env-file .env.docker \
+            config -q
+
+          docker compose \
+            -p myra \
+            -f deploy/compose/docker-compose.prod.yaml \
+            --env-file .env.docker \
+            up -d --build backend
+
+          sleep 15
+          curl -fsS -o /dev/null http://127.0.0.1:8016/ || { echo "Myra backend not responding"; docker logs --tail 50 myra-backend; exit 1; }
+
+          docker compose \
+            -p myra \
+            -f deploy/compose/docker-compose.prod.yaml \
+            ps
+
+          docker image prune -f
+          docker builder prune -af --filter until=48h
+
+          echo "Myra production deployment completed."
+
+          EOF
+
+      - name: Remove SSH key
+        if: always()
+        run: rm -f ~/.ssh/id_rsa

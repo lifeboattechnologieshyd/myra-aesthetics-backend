@@ -1,0 +1,23 @@
+services:
+  backend:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    container_name: myra-backend
+    restart: unless-stopped
+    env_file:
+      - ../../.env.docker
+    ports:
+      - "127.0.0.1:8016:8000"
+    networks:
+      - myra-network
+    init: true
+    stop_grace_period: 40s
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+networks:
+  myra-network:
+    name: myra-network
+    driver: bridge
