@@ -50,8 +50,24 @@ jobs:
             --env-file .env.docker \
             up -d --build backend
 
-          sleep 15
-          curl -fsS -o /dev/null http://127.0.0.1:8016/ || { echo "Myra backend not responding"; docker logs --tail 50 myra-backend; exit 1; }
+          echo "Waiting for Myra backend to become healthy..."
+          ok=0
+          for i in $(seq 1 12); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8016/admin/login/ || true)
+            if [ "$code" = "200" ] || [ "$code" = "301" ] || [ "$code" = "302" ]; then
+              echo "Health check passed (HTTP $code)"
+              ok=1
+              break
+            fi
+            echo "Attempt $i/12: HTTP $code, retrying in 10s..."
+            sleep 10
+          done
+
+          if [ "$ok" != "1" ]; then
+            echo "Myra backend health check failed"
+            docker logs --tail 80 myra-backend
+            exit 1
+          fi
 
           docker compose \
             -p myra \
